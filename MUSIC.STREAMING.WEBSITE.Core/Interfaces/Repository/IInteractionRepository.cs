@@ -64,4 +64,22 @@ public interface IInteractionRepository
     /// <param name="pageSize">Số lượng bản ghi trên mỗi trang</param>
     /// <returns>Kết quả phân trang</returns>
     Task<PagingResult<User>> GetFollowersAsync(Guid followingId, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy chi tiết playlist kèm danh sách bài hát
+    /// </summary>
+    /// <param name="playlistId">ID playlist</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Thông tin playlist và danh sách bài hát</returns>
+    Task<dynamic> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Xóa bài hát khỏi album
+    /// </summary>
+    /// <param name="userId">ID người dùng (artist/admin)</param>
+    /// <param name="albumId">ID album</param>
+    /// <param name="songId">ID bài hát</param>
+    /// <returns></returns>
+    Task RemoveSongFromAlbumAsync(Guid userId, Guid albumId, Guid songId);
 }

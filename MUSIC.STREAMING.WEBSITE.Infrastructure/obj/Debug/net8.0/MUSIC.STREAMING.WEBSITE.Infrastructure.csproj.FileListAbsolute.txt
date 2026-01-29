@@ -13,3 +13,4 @@
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/refint/MUSIC.STREAMING.WEBSITE.Infrastructure.dll
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.pdb
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/ref/MUSIC.STREAMING.WEBSITE.Infrastructure.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.sourcelink.json

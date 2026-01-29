@@ -62,4 +62,23 @@ public interface ISongRepository : IBaseRepository<Song>
     Task<PagingResult<SongDto>> GetSongsByArtistIdAsync(Guid artistId, int pageIndex, int pageSize);
 
     Task<Song?> GetByFileHashAsync(string hash);
+
+    /// <summary>
+    /// Lấy danh sách bài hát của người dùng (nghệ sĩ) với phân trang
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <param name="keyword">Từ khóa tìm kiếm theo tên bài hát</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Danh sách bài hát phân trang</returns>
+    Task<PagingResult<SongDto>> GetUserSongsAsync(Guid userId, string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Kiểm tra artist có phải chủ sở hữu bài hát không
+    /// </summary>
+    /// <param name="artistId">ID artist</param>
+    /// <param name="songId">ID bài hát</param>
+    /// <returns>True nếu artist là chủ sở hữu, ngược lại False</returns>
+    Task<bool> CheckSongOwnerAsync(Guid artistId, Guid songId);
 }
+

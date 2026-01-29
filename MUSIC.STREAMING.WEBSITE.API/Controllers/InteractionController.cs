@@ -123,5 +123,96 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
+
+        [HttpDelete("playlist/{playlistId}/remove-song/{songId}")]
+        public async Task<IActionResult> RemoveSongFromPlaylist(Guid playlistId, Guid songId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+                await _interactionService.RemoveSongFromPlaylistAsync(userId, playlistId, songId);
+                return Ok(new { Message = "Đã xóa bài hát khỏi playlist thành công" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPut("playlist/{playlistId}")]
+        public async Task<IActionResult> UpdatePlaylist(Guid playlistId, [FromBody] dynamic data)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+                string title = data.title;
+                var result = await _interactionService.UpdatePlaylistAsync(userId, playlistId, title);
+                return Ok(new { Message = "Cập nhật playlist thành công", Data = result });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpDelete("playlist/{playlistId}")]
+        public async Task<IActionResult> DeletePlaylist(Guid playlistId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+                await _interactionService.DeletePlaylistAsync(userId, playlistId);
+                return Ok(new { Message = "Xóa playlist thành công" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpGet("playlist/{playlistId}")]
+        public async Task<IActionResult> GetPlaylistDetails(Guid playlistId, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var result = await _interactionService.GetPlaylistDetailsAsync(playlistId, pageIndex, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpDelete("album/{albumId}/remove-song/{songId}")]
+        public async Task<IActionResult> RemoveSongFromAlbum(Guid albumId, Guid songId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+                await _interactionService.RemoveSongFromAlbumAsync(userId, albumId, songId);
+                return Ok(new { Message = "Đã xóa bài hát khỏi album thành công" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }

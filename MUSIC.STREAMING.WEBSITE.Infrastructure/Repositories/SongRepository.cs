@@ -154,4 +154,60 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
 
         return await _connection.QueryFirstOrDefaultAsync<Song>(sql, new { Hash = hash });
     }
+
+    public async Task<PagingResult<SongDto>> GetUserSongsAsync(Guid userId, string keyword, int pageIndex, int pageSize)
+    {
+        var p = new DynamicParameters();
+        p.Add("UserId", userId);
+        p.Add("Keyword", string.IsNullOrEmpty(keyword) ? "" : $"%{keyword}%");
+
+        // Query đếm: Đếm bài hát của user này
+        var countSql = @"
+            SELECT COUNT(1) FROM songs s 
+            JOIN song_artists sa ON s.song_id = sa.song_id
+            WHERE sa.artist_id = @UserId 
+            AND (s.title LIKE @Keyword OR @Keyword = '')";
+
+        var totalRecords = await _connection.ExecuteScalarAsync<int>(countSql, p);
+
+        // Query lấy dữ liệu
+        int offset = (pageIndex - 1) * pageSize;
+        p.Add("Off", offset);
+        p.Add("Lim", pageSize);
+
+        var sql = $@"
+            SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+            FROM songs s
+            JOIN song_artists sa ON s.song_id = sa.song_id
+            LEFT JOIN users u ON sa.artist_id = u.user_id
+            WHERE sa.artist_id = @UserId 
+            AND (s.title LIKE @Keyword OR @Keyword = '')
+            GROUP BY s.song_id
+            ORDER BY s.created_at DESC
+            LIMIT @Lim OFFSET @Off";
+
+        var data = await _connection.QueryAsync<SongDto>(sql, p);
+
+        return new PagingResult<SongDto>
+        {
+            Data = data,
+            TotalRecords = totalRecords,
+            TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize),
+            FromRecord = totalRecords == 0 ? 0 : offset + 1,
+            ToRecord = totalRecords == 0 ? 0 : Math.Min(pageIndex * pageSize, totalRecords)
+        };
+    }
+
+    public async Task<bool> CheckSongOwnerAsync(Guid artistId, Guid songId)
+    {
+        var sql = @"
+            SELECT COUNT(1) FROM songs s
+            JOIN song_artists sa ON s.song_id = sa.song_id
+            WHERE s.song_id = @SongId AND sa.artist_id = @ArtistId";
+
+        var count = await _connection.ExecuteScalarAsync<int>(sql, new { SongId = songId, ArtistId = artistId });
+        return count > 0;
+    }
 }
+

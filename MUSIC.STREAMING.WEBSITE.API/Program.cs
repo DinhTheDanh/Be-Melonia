@@ -36,6 +36,7 @@ builder.Services.AddScoped<IInteractionService, InteractionService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAlbumRepository, AlbumRepository>();
 builder.Services.AddScoped<IGenreRepository, GenreRepository>();
+builder.Services.AddScoped<IPlaylistRepository, PlaylistRepository>();
 
 // Cấu hình JWT 
 // Lấy Key từ appsettings.json

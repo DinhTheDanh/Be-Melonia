@@ -94,4 +94,35 @@ public class InteractionService : IInteractionService
             ToRecord = result.ToRecord
         };
     }
+
+    public async Task<Playlist> UpdatePlaylistAsync(Guid userId, Guid playlistId, string title)
+    {
+        var playlist = await _playlistRepo.GetByIdAsync(playlistId);
+        if (playlist == null) throw new Exception("Playlist không tồn tại.");
+        if (playlist.UserId != userId) throw new UnauthorizedAccessException("Bạn không có quyền chỉnh sửa playlist này.");
+
+        playlist.Title = title;
+        await _playlistRepo.UpdateAsync(playlistId, playlist);
+        return playlist;
+    }
+
+    public async Task DeletePlaylistAsync(Guid userId, Guid playlistId)
+    {
+        var playlist = await _playlistRepo.GetByIdAsync(playlistId);
+        if (playlist == null) throw new Exception("Playlist không tồn tại.");
+        if (playlist.UserId != userId) throw new UnauthorizedAccessException("Bạn không có quyền xóa playlist này.");
+
+        await _playlistRepo.DeleteAsync(playlistId);
+    }
+
+    public async Task<dynamic> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize)
+    {
+        return await _interactionRepo.GetPlaylistDetailsAsync(playlistId, pageIndex, pageSize);
+    }
+
+    public async Task RemoveSongFromAlbumAsync(Guid userId, Guid albumId, Guid songId)
+    {
+        await _interactionRepo.RemoveSongFromAlbumAsync(userId, albumId, songId);
+    }
 }
+

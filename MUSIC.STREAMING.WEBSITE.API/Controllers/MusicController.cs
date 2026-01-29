@@ -34,9 +34,9 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         }
 
         [HttpGet("albums")]
-        public async Task<IActionResult> GetAlbums([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAlbums([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _musicService.GetAlbumsAsync(pageIndex, pageSize);
+            var result = await _musicService.GetAlbumsAsync(keyword ?? "", pageIndex, pageSize);
             return Ok(result);
         }
 
@@ -92,6 +92,117 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             {
                 var result = await _musicService.CreateGenreAsync(dto);
                 return Ok(new { Message = "Tạo thể loại thành công", Data = result });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpGet("my-songs")]
+        public async Task<IActionResult> GetMySongs([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var userIdString = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+                var userId = Guid.Parse(userIdString);
+                var result = await _musicService.GetUserSongsAsync(userId, keyword ?? "", pageIndex, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpGet("my-albums")]
+        public async Task<IActionResult> GetMyAlbums([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var userIdString = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+                var userId = Guid.Parse(userIdString);
+                var result = await _musicService.GetUserAlbumsAsync(userId, keyword ?? "", pageIndex, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpGet("my-playlists")]
+        public async Task<IActionResult> GetMyPlaylists([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var userIdString = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+                var userId = Guid.Parse(userIdString);
+                var result = await _musicService.GetUserPlaylistsAsync(userId, keyword ?? "", pageIndex, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpGet("playlists")]
+        public async Task<IActionResult> GetAllPlaylists([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var result = await _musicService.GetAllPlaylistsAsync(keyword ?? "", pageIndex, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpDelete("song/{songId}")]
+        public async Task<IActionResult> DeleteSong(Guid songId)
+        {
+            try
+            {
+                var artistId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+                await _musicService.DeleteSongAsync(artistId, songId);
+                return Ok(new { Message = "Xóa bài hát thành công" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpDelete("album/{albumId}")]
+        public async Task<IActionResult> DeleteAlbum(Guid albumId)
+        {
+            try
+            {
+                var artistId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+                await _musicService.DeleteAlbumAsync(artistId, albumId);
+                return Ok(new { Message = "Xóa album thành công" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
             }
             catch (Exception ex)
             {

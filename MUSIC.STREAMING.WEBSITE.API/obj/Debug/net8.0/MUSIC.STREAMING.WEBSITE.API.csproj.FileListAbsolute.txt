@@ -68,3 +68,4 @@
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/MailKit.dll
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/MimeKit.dll
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/BouncyCastle.Crypto.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.API.sourcelink.json

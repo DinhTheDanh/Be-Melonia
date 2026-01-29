@@ -13,10 +13,10 @@ public class MusicService : IMusicService
 {
     private readonly ISongRepository _songRepo;
     private readonly IAlbumRepository _albumRepo;
-    private readonly IBaseRepository<Playlist> _playlistRepo;
+    private readonly IPlaylistRepository _playlistRepo;
     private readonly IGenreRepository _genreRepo;
 
-    public MusicService(ISongRepository songRepo, IAlbumRepository albumRepo, IBaseRepository<Playlist> playlistRepo, IGenreRepository genreRepo)
+    public MusicService(ISongRepository songRepo, IAlbumRepository albumRepo, IPlaylistRepository playlistRepo, IGenreRepository genreRepo)
     {
         _songRepo = songRepo;
         _albumRepo = albumRepo;
@@ -38,9 +38,9 @@ public class MusicService : IMusicService
         return genres.Select(g => new GenreDto { Id = g.Id, Name = g.Name, ImageUrl = g.ImageUrl });
     }
 
-    public async Task<PagingResult<AlbumDto>> GetAlbumsAsync(int pageIndex, int pageSize)
+    public async Task<PagingResult<AlbumDto>> GetAlbumsAsync(string keyword, int pageIndex, int pageSize)
     {
-        return await _albumRepo.GetAlbumsWithArtistAsync(pageIndex, pageSize);
+        return await _albumRepo.GetAlbumsWithArtistAsync(keyword, pageIndex, pageSize);
     }
 
     public async Task<Song?> CheckFileHashAsync(string hash)
@@ -138,4 +138,49 @@ public class MusicService : IMusicService
         return genre;
     }
 
+    public async Task<PagingResult<SongDto>> GetUserSongsAsync(Guid userId, string keyword, int pageIndex, int pageSize)
+    {
+        return await _songRepo.GetUserSongsAsync(userId, keyword, pageIndex, pageSize);
+    }
+
+    public async Task<PagingResult<AlbumDto>> GetUserAlbumsAsync(Guid userId, string keyword, int pageIndex, int pageSize)
+    {
+        return await _albumRepo.GetUserAlbumsAsync(userId, keyword, pageIndex, pageSize);
+    }
+
+    public async Task<PagingResult<PlaylistDto>> GetUserPlaylistsAsync(Guid userId, string keyword, int pageIndex, int pageSize)
+    {
+        return await _playlistRepo.GetUserPlaylistsAsync(userId, keyword, pageIndex, pageSize);
+    }
+
+    public async Task<PagingResult<PlaylistDto>> GetAllPlaylistsAsync(string keyword, int pageIndex, int pageSize)
+    {
+        return await _playlistRepo.GetAllPlaylistsAsync(keyword, pageIndex, pageSize);
+    }
+
+    public async Task DeleteSongAsync(Guid artistId, Guid songId)
+    {
+        // Kiểm tra bài hát tồn tại và artist là chủ sở hữu
+        var song = await _songRepo.GetByIdAsync(songId);
+        if (song == null) throw new Exception("Bài hát không tồn tại");
+
+        // Kiểm tra artist có quyền xóa
+        var isOwner = await _songRepo.CheckSongOwnerAsync(artistId, songId);
+        if (!isOwner) throw new UnauthorizedAccessException("Bạn không có quyền xóa bài hát này");
+
+        await _songRepo.DeleteAsync(songId);
+    }
+
+    public async Task DeleteAlbumAsync(Guid artistId, Guid albumId)
+    {
+        // Kiểm tra album tồn tại
+        var album = await _albumRepo.GetByIdAsync(albumId);
+        if (album == null) throw new Exception("Album không tồn tại");
+
+        // Kiểm tra artist là chủ sở hữu
+        if (album.ArtistId != artistId) throw new UnauthorizedAccessException("Bạn không có quyền xóa album này");
+
+        await _albumRepo.DeleteAsync(albumId);
+    }
 }
+

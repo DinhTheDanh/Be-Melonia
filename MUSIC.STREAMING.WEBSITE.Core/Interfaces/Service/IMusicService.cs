@@ -57,10 +57,11 @@ public interface IMusicService
     /// <summary>
     /// Lấy danh sách album với phân trang
     /// </summary>
+    /// <param name="keyword">Từ khóa tìm kiếm theo tên album</param>
     /// <param name="pageIndex">Chỉ mục trang</param>
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Danh sách album phân trang</returns>
-    Task<PagingResult<AlbumDto>> GetAlbumsAsync(int pageIndex, int pageSize);
+    Task<PagingResult<AlbumDto>> GetAlbumsAsync(string keyword, int pageIndex, int pageSize);
 
     /// <summary>
     /// Tạo thể loại âm nhạc
@@ -75,4 +76,59 @@ public interface IMusicService
     /// <param name="hash"></param>
     /// <returns></returns>
     Task<Song?> CheckFileHashAsync(string hash);
+
+    /// <summary>
+    /// Lấy danh sách bài hát của người dùng (nghệ sĩ) hiện tại
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <param name="keyword">Từ khóa tìm kiếm</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Danh sách bài hát phân trang</returns>
+    Task<PagingResult<SongDto>> GetUserSongsAsync(Guid userId, string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy danh sách album của người dùng (nghệ sĩ) hiện tại
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <param name="keyword">Từ khóa tìm kiếm</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Danh sách album phân trang</returns>
+    Task<PagingResult<AlbumDto>> GetUserAlbumsAsync(Guid userId, string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy danh sách playlist của người dùng hiện tại
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <param name="keyword">Từ khóa tìm kiếm</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Danh sách playlist phân trang</returns>
+    Task<PagingResult<PlaylistDto>> GetUserPlaylistsAsync(Guid userId, string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy danh sách tất cả playlist (công khai)
+    /// </summary>
+    /// <param name="keyword">Từ khóa tìm kiếm</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Danh sách playlist phân trang</returns>
+    Task<PagingResult<PlaylistDto>> GetAllPlaylistsAsync(string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Xóa bài hát
+    /// </summary>
+    /// <param name="artistId">ID nghệ sĩ (chủ sở hữu)</param>
+    /// <param name="songId">ID bài hát</param>
+    /// <returns></returns>
+    Task DeleteSongAsync(Guid artistId, Guid songId);
+
+    /// <summary>
+    /// Xóa album
+    /// </summary>
+    /// <param name="artistId">ID nghệ sĩ (chủ sở hữu)</param>
+    /// <param name="albumId">ID album</param>
+    /// <returns></returns>
+    Task DeleteAlbumAsync(Guid artistId, Guid albumId);
 }

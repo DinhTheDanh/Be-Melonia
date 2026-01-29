@@ -177,5 +177,74 @@ public class InteractionRepository : IInteractionRepository
             ToRecord = totalRecords == 0 ? 0 : Math.Min(pageIndex * pageSize, totalRecords)
         };
     }
+
+    public async Task<dynamic> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize)
+    {
+        var p = new DynamicParameters();
+        p.Add("PlaylistId", playlistId);
+
+        // Lấy thông tin playlist
+        var playlistSql = @"
+            SELECT p.playlist_id as PlaylistId, p.title, p.created_at as CreatedAt,
+                   u.full_name as CreatedBy, u.user_id as CreatedById
+            FROM playlists p
+            LEFT JOIN users u ON p.user_id = u.user_id
+            WHERE p.playlist_id = @PlaylistId";
+
+        var playlist = await _connection.QueryFirstOrDefaultAsync<dynamic>(playlistSql, p);
+        if (playlist == null) throw new Exception("Playlist không tồn tại");
+
+        // Đếm bài hát trong playlist
+        var countSql = "SELECT COUNT(1) FROM playlist_songs WHERE playlist_id = @PlaylistId";
+        var totalSongs = await _connection.ExecuteScalarAsync<int>(countSql, p);
+
+        // Lấy danh sách bài hát
+        int offset = (pageIndex - 1) * pageSize;
+        p.Add("Offset", offset);
+        p.Add("Limit", pageSize);
+
+        var songsSql = @"
+            SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+            FROM songs s
+            LEFT JOIN song_artists sa ON s.song_id = sa.song_id
+            LEFT JOIN users u ON sa.artist_id = u.user_id
+            WHERE s.song_id IN (SELECT song_id FROM playlist_songs WHERE playlist_id = @PlaylistId)
+            GROUP BY s.song_id
+            ORDER BY ps.added_at DESC
+            LIMIT @Limit OFFSET @Offset";
+
+        var songs = await _connection.QueryAsync<dynamic>(songsSql, p);
+
+        return new
+        {
+            Playlist = playlist,
+            Songs = new
+            {
+                Data = songs,
+                TotalRecords = totalSongs,
+                TotalPages = (int)Math.Ceiling((double)totalSongs / pageSize),
+                FromRecord = totalSongs == 0 ? 0 : offset + 1,
+                ToRecord = totalSongs == 0 ? 0 : Math.Min(pageIndex * pageSize, totalSongs)
+            }
+        };
+    }
+
+    public async Task RemoveSongFromAlbumAsync(Guid userId, Guid albumId, Guid songId)
+    {
+        // Kiểm tra album tồn tại và user là chủ sở hữu
+        var albumSql = "SELECT artist_id FROM albums WHERE album_id = @AlbumId";
+        var artistId = await _connection.ExecuteScalarAsync<Guid?>(albumSql, new { AlbumId = albumId });
+
+        if (!artistId.HasValue) throw new Exception("Album không tồn tại");
+        if (artistId.Value != userId) throw new UnauthorizedAccessException("Bạn không có quyền xóa bài hát khỏi album này");
+
+        // Xóa bài hát khỏi album (cập nhật album_id thành null)
+        var updateSql = "UPDATE songs SET album_id = NULL WHERE song_id = @SongId AND album_id = @AlbumId";
+        var result = await _connection.ExecuteAsync(updateSql, new { SongId = songId, AlbumId = albumId });
+
+        if (result == 0) throw new Exception("Bài hát không thuộc album này");
+    }
 }
+
 

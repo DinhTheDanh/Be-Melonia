@@ -10,3 +10,4 @@
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.pdb
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/ref/MUSIC.STREAMING.WEBSITE.Core.dll
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.csproj.AssemblyReference.cache
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.sourcelink.json
