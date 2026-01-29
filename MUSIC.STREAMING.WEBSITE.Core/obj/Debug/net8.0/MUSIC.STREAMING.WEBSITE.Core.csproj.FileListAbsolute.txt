@@ -1,0 +1,12 @@
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.deps.json
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.pdb
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.GeneratedMSBuildEditorConfig.editorconfig
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.AssemblyInfoInputs.cache
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.AssemblyInfo.cs
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.csproj.CoreCompileInputs.cache
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/refint/MUSIC.STREAMING.WEBSITE.Core.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.pdb
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/ref/MUSIC.STREAMING.WEBSITE.Core.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Core/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.csproj.AssemblyReference.cache

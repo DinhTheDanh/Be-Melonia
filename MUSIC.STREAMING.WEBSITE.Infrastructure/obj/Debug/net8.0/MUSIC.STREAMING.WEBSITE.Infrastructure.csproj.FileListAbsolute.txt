@@ -1,0 +1,15 @@
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.deps.json
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.pdb
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/bin/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Core.pdb
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.csproj.AssemblyReference.cache
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.AssemblyInfoInputs.cache
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.AssemblyInfo.cs
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.csproj.CoreCompileInputs.cache
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.ST.B3B03377.Up2Date
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/refint/MUSIC.STREAMING.WEBSITE.Infrastructure.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/MUSIC.STREAMING.WEBSITE.Infrastructure.pdb
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.Infrastructure/obj/Debug/net8.0/ref/MUSIC.STREAMING.WEBSITE.Infrastructure.dll
