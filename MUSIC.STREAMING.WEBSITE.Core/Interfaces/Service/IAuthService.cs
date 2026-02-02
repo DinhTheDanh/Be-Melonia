@@ -57,4 +57,17 @@ public interface IAuthService
     /// <returns></returns>
     Task ResetPasswordAsync(ResetPasswordDto dto);
 
+    /// <summary>
+    /// Refresh access token bằng refresh token
+    /// </summary>
+    /// <param name="refreshToken">Refresh token</param>
+    /// <returns>Token mới</returns>
+    Task<TokenResponseDto> RefreshTokenAsync(string refreshToken);
+
+    /// <summary>
+    /// Đăng xuất - revoke refresh token
+    /// </summary>
+    /// <param name="refreshToken">Refresh token cần revoke</param>
+    /// <returns></returns>
+    Task LogoutAsync(string refreshToken);
 }

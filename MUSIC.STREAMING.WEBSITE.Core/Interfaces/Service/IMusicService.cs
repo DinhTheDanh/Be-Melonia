@@ -1,6 +1,7 @@
 using System;
 using MUSIC.STREAMING.WEBSITE.Core.DTOs;
 using MUSIC.STREAMING.WEBSITE.Core.Entities;
+using MUSIC.STREAMING.WEBSITE.Core.Helpers;
 
 namespace MUSIC.STREAMING.WEBSITE.Core.Interfaces.Service;
 
@@ -121,14 +122,32 @@ public interface IMusicService
     /// </summary>
     /// <param name="artistId">ID nghệ sĩ (chủ sở hữu)</param>
     /// <param name="songId">ID bài hát</param>
-    /// <returns></returns>
-    Task DeleteSongAsync(Guid artistId, Guid songId);
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> DeleteSongAsync(Guid artistId, Guid songId);
+
+    /// <summary>
+    /// Chỉnh sửa bài hát
+    /// </summary>
+    /// <param name="artistId">ID nghệ sĩ (chủ sở hữu)</param>
+    /// <param name="songId">ID bài hát</param>
+    /// <param name="dto">Thông tin cập nhật</param>
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> UpdateSongAsync(Guid artistId, Guid songId, UpdateSongDto dto);
 
     /// <summary>
     /// Xóa album
     /// </summary>
     /// <param name="artistId">ID nghệ sĩ (chủ sở hữu)</param>
     /// <param name="albumId">ID album</param>
-    /// <returns></returns>
-    Task DeleteAlbumAsync(Guid artistId, Guid albumId);
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> DeleteAlbumAsync(Guid artistId, Guid albumId);
+
+    /// <summary>
+    /// Chỉnh sửa album
+    /// </summary>
+    /// <param name="artistId">ID nghệ sĩ (chủ sở hữu)</param>
+    /// <param name="albumId">ID album</param>
+    /// <param name="dto">Thông tin cập nhật</param>
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> UpdateAlbumAsync(Guid artistId, Guid albumId, UpdateAlbumDto dto);
 }

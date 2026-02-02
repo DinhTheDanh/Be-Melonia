@@ -13,6 +13,75 @@ http://localhost:5111/api/v1
 
 ---
 
+## 📦 Response Format
+
+> **Lưu ý:** API trả về JSON với property names dạng **PascalCase** (viết hoa chữ cái đầu)
+
+### Chuẩn Response cho các thao tác (Create/Update/Delete)
+
+**✅ Thành công (200 OK):**
+
+```json
+{
+  "Message": "Thông báo thành công"
+}
+```
+
+**❌ Không tìm thấy (404 Not Found):**
+
+```json
+{
+  "Message": "Tài nguyên không tồn tại"
+}
+```
+
+**🚫 Không có quyền (403 Forbidden):**
+
+```json
+{
+  "Message": "Bạn không có quyền thực hiện thao tác này"
+}
+```
+
+**⚠️ Lỗi validation (400 Bad Request):**
+
+```json
+{
+  "Message": "Mô tả lỗi"
+}
+```
+
+**🔒 Chưa đăng nhập (401 Unauthorized):**
+
+```json
+{
+  "Message": "Unauthorized"
+}
+```
+
+### Response có kèm Data
+
+```json
+{
+  "Message": "Thao tác thành công",
+  "Data": { ... }
+}
+```
+
+### Response Paging (Danh sách)
+
+```json
+{
+  "Data": [...],
+  "TotalRecords": 100,
+  "TotalPages": 10,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
+
+---
+
 ## 🎵 MUSIC ENDPOINTS
 
 ### 1. Get All Songs (Search)
@@ -50,20 +119,42 @@ POST /Music/song
 Content-Type: application/json
 
 {
-  "title": "Bài hát mới",
-  "albumId": "guid-or-null",
-  "fileUrl": "https://...",
-  "duration": 180,
-  "lyrics": "...",
-  "fileHash": "hash",
-  "thumbnail": "https://...",
-  "artistIds": ["guid1", "guid2"]
+  "Title": "Bài hát mới",
+  "AlbumId": "guid-or-null",
+  "FileUrl": "https://...",
+  "Duration": 180,
+  "Lyrics": "...",
+  "FileHash": "hash",
+  "Thumbnail": "https://...",
+  "ArtistIds": ["guid1", "guid2"]
 }
 ```
 
 ---
 
-### 4. Delete Song ✅
+### 4. Update Song ✅
+
+```
+PUT /Music/song/{songId}
+Content-Type: application/json
+
+{
+  "Title": "Tên bài hát mới",
+  "Thumbnail": "https://...",
+  "Lyrics": "Lời bài hát...",
+  "GenreIds": ["guid1", "guid2"]
+}
+```
+
+**Params:**
+
+- `songId` (Guid) - ID bài hát cần chỉnh sửa
+
+**Note:** Chỉ chủ sở hữu bài hát mới có thể chỉnh sửa. Tất cả fields đều optional.
+
+---
+
+### 5. Delete Song ✅
 
 ```
 DELETE /Music/song/{songId}
@@ -79,7 +170,7 @@ DELETE /Music/song/{songId}
 
 ## 📀 ALBUM ENDPOINTS
 
-### 5. Get All Albums (Search)
+### 6. Get All Albums (Search)
 
 ```
 GET /Music/albums?keyword=&pageIndex=1&pageSize=10
@@ -95,7 +186,7 @@ GET /Music/albums?keyword=&pageIndex=1&pageSize=10
 
 ---
 
-### 6. Get My Albums (Authorized) ✅
+### 7. Get My Albums (Authorized) ✅
 
 ```
 GET /Music/my-albums?keyword=&pageIndex=1&pageSize=10
@@ -107,22 +198,43 @@ GET /Music/my-albums?keyword=&pageIndex=1&pageSize=10
 
 ---
 
-### 7. Create Album ✅
+### 8. Create Album ✅
 
 ```
 POST /Music/album
 Content-Type: application/json
 
 {
-  "title": "Album mới",
-  "thumbnail": "https://...",
-  "releaseDate": "2026-01-30"
+  "Title": "Album mới",
+  "Thumbnail": "https://...",
+  "ReleaseDate": "2026-01-30"
 }
 ```
 
 ---
 
-### 8. Delete Album ✅
+### 9. Update Album ✅
+
+```
+PUT /Music/album/{albumId}
+Content-Type: application/json
+
+{
+  "Title": "Tên album mới",
+  "Thumbnail": "https://...",
+  "ReleaseDate": "2026-01-30"
+}
+```
+
+**Params:**
+
+- `albumId` (Guid) - ID album cần chỉnh sửa
+
+**Note:** Chỉ chủ sở hữu album mới có thể chỉnh sửa. Tất cả fields đều optional.
+
+---
+
+### 10. Delete Album ✅
 
 ```
 DELETE /Music/album/{albumId}
@@ -138,7 +250,7 @@ DELETE /Music/album/{albumId}
 
 ## 📋 PLAYLIST ENDPOINTS
 
-### 9. Get All Playlists (Search)
+### 11. Get All Playlists (Search)
 
 ```
 GET /Music/playlists?keyword=&pageIndex=1&pageSize=10
@@ -154,7 +266,7 @@ GET /Music/playlists?keyword=&pageIndex=1&pageSize=10
 
 ---
 
-### 10. Get My Playlists (Authorized) ✅
+### 12. Get My Playlists (Authorized) ✅
 
 ```
 GET /Music/my-playlists?keyword=&pageIndex=1&pageSize=10
@@ -166,21 +278,21 @@ GET /Music/my-playlists?keyword=&pageIndex=1&pageSize=10
 
 ---
 
-### 11. Create Playlist ✅
+### 13. Create Playlist ✅
 
 ```
 POST /Interaction/playlist
 Content-Type: application/json
 
 {
-  "title": "Playlist mới",
-  "description": "Mô tả (optional)"
+  "Title": "Playlist mới",
+  "Description": "Mô tả (optional)"
 }
 ```
 
 ---
 
-### 12. Get Playlist Details ✅
+### 14. Get Playlist Details ✅
 
 ```
 GET /Interaction/playlist/{playlistId}?pageIndex=1&pageSize=10
@@ -196,38 +308,38 @@ GET /Interaction/playlist/{playlistId}?pageIndex=1&pageSize=10
 
 ```json
 {
-  "playlist": {
-    "playlistId": "guid",
-    "title": "...",
-    "createdAt": "2026-01-30",
-    "createdBy": "Tên người dùng"
+  "Playlist": {
+    "PlaylistId": "guid",
+    "Title": "...",
+    "CreatedAt": "2026-01-30",
+    "CreatedBy": "Tên người dùng"
   },
-  "songs": {
-    "data": [...],
-    "totalRecords": 10,
-    "totalPages": 1,
-    "fromRecord": 1,
-    "toRecord": 10
+  "Songs": {
+    "Data": [...],
+    "TotalRecords": 10,
+    "TotalPages": 1,
+    "FromRecord": 1,
+    "ToRecord": 10
   }
 }
 ```
 
 ---
 
-### 13. Update Playlist ✅
+### 15. Update Playlist ✅
 
 ```
 PUT /Interaction/playlist/{playlistId}
 Content-Type: application/json
 
 {
-  "title": "Tên playlist mới"
+  "Title": "Tên playlist mới"
 }
 ```
 
 ---
 
-### 14. Delete Playlist ✅
+### 16. Delete Playlist ✅
 
 ```
 DELETE /Interaction/playlist/{playlistId}
@@ -239,7 +351,7 @@ DELETE /Interaction/playlist/{playlistId}
 
 ## 🎶 PLAYLIST SONG MANAGEMENT
 
-### 15. Add Song to Playlist ✅
+### 17. Add Song to Playlist ✅
 
 ```
 POST /Interaction/playlist/{playlistId}/add-song/{songId}
@@ -252,7 +364,7 @@ POST /Interaction/playlist/{playlistId}/add-song/{songId}
 
 ---
 
-### 16. Remove Song from Playlist ✅
+### 18. Remove Song from Playlist ✅
 
 ```
 DELETE /Interaction/playlist/{playlistId}/remove-song/{songId}
@@ -267,7 +379,7 @@ DELETE /Interaction/playlist/{playlistId}/remove-song/{songId}
 
 ## 💿 ALBUM SONG MANAGEMENT
 
-### 17. Remove Song from Album ✅
+### 19. Remove Song from Album ✅
 
 ```
 DELETE /Interaction/album/{albumId}/remove-song/{songId}
@@ -284,7 +396,7 @@ DELETE /Interaction/album/{albumId}/remove-song/{songId}
 
 ## ❤️ LIKE ENDPOINTS
 
-### 18. Toggle Like Song ✅
+### 20. Toggle Like Song ✅
 
 ```
 POST /Interaction/like/{songId}
@@ -298,14 +410,14 @@ POST /Interaction/like/{songId}
 
 ```json
 {
-  "isLiked": true,
-  "message": "Đã thích bài hát"
+  "IsLiked": true,
+  "Message": "Đã thích bài hát"
 }
 ```
 
 ---
 
-### 19. Get Liked Songs ✅
+### 21. Get Liked Songs ✅
 
 ```
 GET /Interaction/liked-songs?pageIndex=1&pageSize=10
@@ -322,7 +434,7 @@ GET /Interaction/liked-songs?pageIndex=1&pageSize=10
 
 ## 👥 FOLLOW ENDPOINTS
 
-### 20. Toggle Follow User ✅
+### 22. Toggle Follow User ✅
 
 ```
 POST /Interaction/follow/{targetUserId}
@@ -336,14 +448,14 @@ POST /Interaction/follow/{targetUserId}
 
 ```json
 {
-  "isFollowing": true,
-  "message": "Đã theo dõi"
+  "IsFollowing": true,
+  "Message": "Đã theo dõi"
 }
 ```
 
 ---
 
-### 21. Get Following List ✅
+### 23. Get Following List ✅
 
 ```
 GET /Interaction/followings?pageIndex=1&pageSize=10
@@ -360,7 +472,7 @@ GET /Interaction/followings?pageIndex=1&pageSize=10
 
 ## 🏷️ GENRE ENDPOINTS
 
-### 22. Get All Genres
+### 24. Get All Genres
 
 ```
 GET /Music/genres
@@ -370,15 +482,15 @@ GET /Music/genres
 
 ---
 
-### 23. Create Genre
+### 25. Create Genre
 
 ```
 POST /Music/genre
 Content-Type: application/json
 
 {
-  "name": "Rock",
-  "imageUrl": "https://..."
+  "Name": "Rock",
+  "ImageUrl": "https://..."
 }
 ```
 
@@ -390,13 +502,13 @@ Content-Type: application/json
 
 ```json
 {
-  "id": "guid",
-  "title": "Tên bài hát",
-  "thumbnail": "https://...",
-  "fileUrl": "https://...",
-  "duration": 180,
-  "artistNames": "Artist 1, Artist 2",
-  "artistIds": ["guid1", "guid2"]
+  "Id": "guid",
+  "Title": "Tên bài hát",
+  "Thumbnail": "https://...",
+  "FileUrl": "https://...",
+  "Duration": 180,
+  "ArtistNames": "Artist 1, Artist 2",
+  "ArtistIds": ["guid1", "guid2"]
 }
 ```
 
@@ -404,11 +516,11 @@ Content-Type: application/json
 
 ```json
 {
-  "albumId": "guid",
-  "title": "Tên album",
-  "thumbnail": "https://...",
-  "releaseDate": "2026-01-30",
-  "artistName": "Tên nghệ sĩ"
+  "AlbumId": "guid",
+  "Title": "Tên album",
+  "Thumbnail": "https://...",
+  "ReleaseDate": "2026-01-30",
+  "ArtistName": "Tên nghệ sĩ"
 }
 ```
 
@@ -416,12 +528,12 @@ Content-Type: application/json
 
 ```json
 {
-  "playlistId": "guid",
-  "title": "Tên playlist",
-  "description": "Mô tả",
-  "createdBy": "Tên người dùng",
-  "createdAt": "2026-01-30",
-  "songCount": 5
+  "PlaylistId": "guid",
+  "Title": "Tên playlist",
+  "Description": "Mô tả",
+  "CreatedBy": "Tên người dùng",
+  "CreatedAt": "2026-01-30",
+  "SongCount": 5
 }
 ```
 
@@ -429,11 +541,11 @@ Content-Type: application/json
 
 ```json
 {
-  "data": [...],
-  "totalRecords": 100,
-  "totalPages": 10,
-  "fromRecord": 1,
-  "toRecord": 10
+  "Data": [...],
+  "TotalRecords": 100,
+  "TotalPages": 10,
+  "FromRecord": 1,
+  "ToRecord": 10
 }
 ```
 
@@ -445,7 +557,7 @@ Content-Type: application/json
 
 ```json
 {
-  "message": "Thông báo lỗi"
+  "Message": "Thông báo lỗi"
 }
 ```
 
@@ -453,7 +565,7 @@ Content-Type: application/json
 
 ```json
 {
-  "message": "Cần đăng nhập"
+  "Message": "Cần đăng nhập"
 }
 ```
 
@@ -461,7 +573,7 @@ Content-Type: application/json
 
 ```json
 {
-  "message": "Bạn không có quyền truy cập"
+  "Message": "Bạn không có quyền truy cập"
 }
 ```
 
@@ -474,27 +586,29 @@ Content-Type: application/json
 | 1   | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)      |
 | 2   | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình (search)    |
 | 3   | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                  |
-| 4   | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                  |
-| 5   | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)        |
-| 6   | `/Music/my-albums`                             | GET    | ✅   | Album của mình (search)      |
-| 7   | `/Music/album`                                 | POST   | ✅   | Tạo album                    |
-| 8   | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                    |
-| 9   | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)     |
-| 10  | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình (search)   |
-| 11  | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                 |
-| 12  | `/Interaction/playlist/{id}`                   | GET    | ❌   | Chi tiết playlist            |
-| 13  | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist            |
-| 14  | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                 |
-| 15  | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist    |
-| 16  | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist    |
-| 17  | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album       |
-| 18  | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát       |
-| 19  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích  |
-| 20  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user    |
-| 21  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi |
-| 22  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại              |
-| 23  | `/Music/genre`                                 | POST   | ✅   | Tạo thể loại                 |
+| 4   | `/Music/song/{id}`                             | PUT    | ✅   | Cập nhật bài hát             |
+| 5   | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                  |
+| 6   | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)        |
+| 7   | `/Music/my-albums`                             | GET    | ✅   | Album của mình (search)      |
+| 8   | `/Music/album`                                 | POST   | ✅   | Tạo album                    |
+| 9   | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album               |
+| 10  | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                    |
+| 11  | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)     |
+| 12  | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình (search)   |
+| 13  | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                 |
+| 14  | `/Interaction/playlist/{id}`                   | GET    | ❌   | Chi tiết playlist            |
+| 15  | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist            |
+| 16  | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                 |
+| 17  | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist    |
+| 18  | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist    |
+| 19  | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album       |
+| 20  | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát       |
+| 21  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích  |
+| 22  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user    |
+| 23  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi |
+| 24  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại              |
+| 25  | `/Music/genre`                                 | POST   | ✅   | Tạo thể loại                 |
 
 ---
 
-**Total: 23 Endpoints** ✅
+**Total: 25 Endpoints** ✅

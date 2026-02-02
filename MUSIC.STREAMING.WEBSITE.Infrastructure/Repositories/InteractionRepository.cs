@@ -209,7 +209,8 @@ public class InteractionRepository : IInteractionRepository
             FROM songs s
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id
-            WHERE s.song_id IN (SELECT song_id FROM playlist_songs WHERE playlist_id = @PlaylistId)
+            LEFT JOIN playlist_songs ps ON s.song_id = ps.song_id AND ps.playlist_id = @PlaylistId
+            WHERE ps.playlist_id = @PlaylistId
             GROUP BY s.song_id
             ORDER BY ps.added_at DESC
             LIMIT @Limit OFFSET @Offset";

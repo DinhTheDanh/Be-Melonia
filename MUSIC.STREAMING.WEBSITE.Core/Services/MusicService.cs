@@ -158,29 +158,72 @@ public class MusicService : IMusicService
         return await _playlistRepo.GetAllPlaylistsAsync(keyword, pageIndex, pageSize);
     }
 
-    public async Task DeleteSongAsync(Guid artistId, Guid songId)
+    public async Task<Result> DeleteSongAsync(Guid artistId, Guid songId)
     {
-        // Kiểm tra bài hát tồn tại và artist là chủ sở hữu
         var song = await _songRepo.GetByIdAsync(songId);
-        if (song == null) throw new Exception("Bài hát không tồn tại");
+        if (song == null) return Result.NotFound("Bài hát không tồn tại");
 
-        // Kiểm tra artist có quyền xóa
         var isOwner = await _songRepo.CheckSongOwnerAsync(artistId, songId);
-        if (!isOwner) throw new UnauthorizedAccessException("Bạn không có quyền xóa bài hát này");
+        if (!isOwner) return Result.Forbidden("Bạn không có quyền xóa bài hát này");
 
         await _songRepo.DeleteAsync(songId);
+        return Result.Success();
     }
 
-    public async Task DeleteAlbumAsync(Guid artistId, Guid albumId)
+    public async Task<Result> UpdateSongAsync(Guid artistId, Guid songId, UpdateSongDto dto)
     {
-        // Kiểm tra album tồn tại
-        var album = await _albumRepo.GetByIdAsync(albumId);
-        if (album == null) throw new Exception("Album không tồn tại");
+        var song = await _songRepo.GetByIdAsync(songId);
+        if (song == null) return Result.NotFound("Bài hát không tồn tại");
 
-        // Kiểm tra artist là chủ sở hữu
-        if (album.ArtistId != artistId) throw new UnauthorizedAccessException("Bạn không có quyền xóa album này");
+        var isOwner = await _songRepo.CheckSongOwnerAsync(artistId, songId);
+        if (!isOwner) return Result.Forbidden("Bạn không có quyền chỉnh sửa bài hát này");
+
+        song.Title = dto.Title ?? song.Title;
+        song.Thumbnail = dto.Thumbnail ?? song.Thumbnail;
+        song.Lyrics = dto.Lyrics ?? song.Lyrics;
+        if (dto.AlbumId.HasValue)
+        {
+            song.AlbumId = dto.AlbumId.Value;
+        }
+
+        await _songRepo.UpdateAsync(songId, song);
+
+        if (dto.GenreIds != null && dto.GenreIds.Any())
+        {
+            await _songRepo.RemoveGenresFromSongAsync(songId);
+            await _songRepo.AddGenresToSongAsync(songId, dto.GenreIds);
+        }
+
+        return Result.Success();
+    }
+
+    public async Task<Result> DeleteAlbumAsync(Guid artistId, Guid albumId)
+    {
+        var album = await _albumRepo.GetByIdAsync(albumId);
+        if (album == null) return Result.NotFound("Album không tồn tại");
+
+        if (album.ArtistId != artistId) return Result.Forbidden("Bạn không có quyền xóa album này");
 
         await _albumRepo.DeleteAsync(albumId);
+        return Result.Success();
+    }
+
+    public async Task<Result> UpdateAlbumAsync(Guid artistId, Guid albumId, UpdateAlbumDto dto)
+    {
+        var album = await _albumRepo.GetByIdAsync(albumId);
+        if (album == null) return Result.NotFound("Album không tồn tại");
+
+        if (album.ArtistId != artistId) return Result.Forbidden("Bạn không có quyền chỉnh sửa album này");
+
+        album.Title = dto.Title ?? album.Title;
+        album.Thumbnail = dto.Thumbnail ?? album.Thumbnail;
+        if (dto.ReleaseDate.HasValue)
+        {
+            album.ReleaseDate = dto.ReleaseDate.Value;
+        }
+
+        await _albumRepo.UpdateAsync(albumId, album);
+        return Result.Success();
     }
 }
 

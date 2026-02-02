@@ -62,10 +62,39 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         }
 
         [HttpPost("logout")]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto? dto)
         {
+            // Revoke refresh token nếu có
+            if (dto != null && !string.IsNullOrEmpty(dto.RefreshToken))
+            {
+                await _authService.LogoutAsync(dto.RefreshToken);
+            }
+
             Response.Cookies.Delete("jwt");
             return Ok(new { Message = "Đăng xuất thành công" });
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.RefreshToken))
+            {
+                return BadRequest(new { Message = "Refresh token không hợp lệ" });
+            }
+
+            var result = await _authService.RefreshTokenAsync(dto.RefreshToken);
+
+            if (result == null)
+            {
+                return Unauthorized(new { Message = "Refresh token không hợp lệ hoặc đã hết hạn" });
+            }
+
+            SetTokenCookie(result.Token);
+            return Ok(new
+            {
+                Token = result.Token,
+                RefreshToken = result.RefreshToken
+            });
         }
 
 

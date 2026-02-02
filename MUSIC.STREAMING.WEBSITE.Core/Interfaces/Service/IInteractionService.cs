@@ -1,6 +1,7 @@
 using System;
 using MUSIC.STREAMING.WEBSITE.Core.DTOs;
 using MUSIC.STREAMING.WEBSITE.Core.Entities;
+using MUSIC.STREAMING.WEBSITE.Core.Helpers;
 
 namespace MUSIC.STREAMING.WEBSITE.Core.Interfaces.Service;
 
@@ -30,8 +31,8 @@ public interface IInteractionService
     /// <param name="userId">ID người dùng</param>
     /// <param name="playlistId">ID playlist</param>
     /// <param name="songId">ID bài hát</param>
-    /// <returns> </returns>
-    Task AddSongToPlaylistAsync(Guid userId, Guid playlistId, Guid songId);
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> AddSongToPlaylistAsync(Guid userId, Guid playlistId, Guid songId);
 
     /// <summary>
     /// Xóa bài hát khỏi playlist
@@ -39,8 +40,8 @@ public interface IInteractionService
     /// <param name="userId">ID người dùng</param>
     /// <param name="playlistId">ID playlist</param>
     /// <param name="songId">ID bài hát</param>
-    /// <returns> </returns>
-    Task RemoveSongFromPlaylistAsync(Guid userId, Guid playlistId, Guid songId);
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> RemoveSongFromPlaylistAsync(Guid userId, Guid playlistId, Guid songId);
 
     /// <summary>
     /// Theo dõi hoặc bỏ theo dõi nghệ sĩ
@@ -48,8 +49,8 @@ public interface IInteractionService
     /// <param name="IsFollowing">Trạng thái theo dõi/bỏ theo dõi</param>
     /// <param name="followerId">ID người theo dõi</param>
     /// <param name="followingId">ID nghệ sĩ được theo dõi</param>
-    /// <returns>Trạng thái theo dõi và thông báo</returns>
-    Task<(bool IsFollowing, string Message)> ToggleFollowAsync(Guid followerId, Guid followingId);
+    /// <returns>Kết quả với trạng thái theo dõi và thông báo</returns>
+    Task<Result<(bool IsFollowing, string Message)>> ToggleFollowAsync(Guid followerId, Guid followingId);
 
     /// <summary>
     /// Lấy danh sách nghệ sĩ đang theo dõi của người dùng với phân trang
@@ -66,16 +67,16 @@ public interface IInteractionService
     /// <param name="userId">ID người dùng (chủ playlist)</param>
     /// <param name="playlistId">ID playlist</param>
     /// <param name="title">Tiêu đề mới</param>
-    /// <returns>Playlist đã cập nhật</returns>
-    Task<Playlist> UpdatePlaylistAsync(Guid userId, Guid playlistId, string title);
+    /// <returns>Kết quả với Playlist đã cập nhật</returns>
+    Task<Result<Playlist>> UpdatePlaylistAsync(Guid userId, Guid playlistId, string title);
 
     /// <summary>
     /// Xóa playlist
     /// </summary>
     /// <param name="userId">ID người dùng (chủ playlist)</param>
     /// <param name="playlistId">ID playlist</param>
-    /// <returns></returns>
-    Task DeletePlaylistAsync(Guid userId, Guid playlistId);
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> DeletePlaylistAsync(Guid userId, Guid playlistId);
 
     /// <summary>
     /// Lấy chi tiết playlist kèm danh sách bài hát

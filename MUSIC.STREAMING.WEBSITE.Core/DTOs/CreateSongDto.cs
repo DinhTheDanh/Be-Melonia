@@ -22,3 +22,12 @@ public class CreateSongDto
 
     public string? FileHash { get; set; }
 }
+
+public class UpdateSongDto
+{
+    public string? Title { get; set; }
+    public string? Thumbnail { get; set; }
+    public string? Lyrics { get; set; }
+    public Guid? AlbumId { get; set; }
+    public List<Guid>? GenreIds { get; set; }
+}

@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MUSIC.STREAMING.WEBSITE.API.Extensions;
 using MUSIC.STREAMING.WEBSITE.Core.DTOs;
 using MUSIC.STREAMING.WEBSITE.Core.Entities;
+using MUSIC.STREAMING.WEBSITE.Core.Helpers;
 using MUSIC.STREAMING.WEBSITE.Core.Interfaces;
 using MUSIC.STREAMING.WEBSITE.Core.Interfaces.Repository;
 using MUSIC.STREAMING.WEBSITE.Core.Interfaces.Service;
@@ -72,39 +74,27 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         [HttpPost("playlist/{playlistId}/add-song/{songId}")]
         public async Task<IActionResult> AddSongToPlaylist(Guid playlistId, Guid songId)
         {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
 
-                await _interactionService.AddSongToPlaylistAsync(userId, playlistId, songId);
-
-                return Ok(new { Message = "Đã thêm bài hát vào playlist thành công" });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var userId = Guid.Parse(userIdString);
+            var result = await _interactionService.AddSongToPlaylistAsync(userId, playlistId, songId);
+            return result.ToActionResult();
         }
 
         [HttpPost("follow/{targetUserId}")]
         public async Task<IActionResult> ToggleFollow(Guid targetUserId)
         {
-            try
-            {
-                var currentUserId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
 
-                var result = await _interactionService.ToggleFollowAsync(currentUserId, targetUserId);
+            var currentUserId = Guid.Parse(userIdString);
+            var result = await _interactionService.ToggleFollowAsync(currentUserId, targetUserId);
 
-                return Ok(new { IsFollowing = result.IsFollowing, Message = result.Message });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            if (!result.IsSuccess)
+                return result.ToActionResult();
+
+            return Ok(new { IsFollowing = result.Data.IsFollowing, Message = result.Data.Message });
         }
 
         [HttpGet("followings")]
@@ -127,59 +117,39 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         [HttpDelete("playlist/{playlistId}/remove-song/{songId}")]
         public async Task<IActionResult> RemoveSongFromPlaylist(Guid playlistId, Guid songId)
         {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
-                await _interactionService.RemoveSongFromPlaylistAsync(userId, playlistId, songId);
-                return Ok(new { Message = "Đã xóa bài hát khỏi playlist thành công" });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var userId = Guid.Parse(userIdString);
+            var result = await _interactionService.RemoveSongFromPlaylistAsync(userId, playlistId, songId);
+            return result.ToActionResult();
         }
 
         [HttpPut("playlist/{playlistId}")]
         public async Task<IActionResult> UpdatePlaylist(Guid playlistId, [FromBody] dynamic data)
         {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
-                string title = data.title;
-                var result = await _interactionService.UpdatePlaylistAsync(userId, playlistId, title);
-                return Ok(new { Message = "Cập nhật playlist thành công", Data = result });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var userId = Guid.Parse(userIdString);
+            string title = data.title;
+            var result = await _interactionService.UpdatePlaylistAsync(userId, playlistId, title);
+
+            if (!result.IsSuccess)
+                return result.ToActionResult();
+
+            return Ok(new { Message = "Cập nhật playlist thành công", Data = result.Data });
         }
 
         [HttpDelete("playlist/{playlistId}")]
         public async Task<IActionResult> DeletePlaylist(Guid playlistId)
         {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
-                await _interactionService.DeletePlaylistAsync(userId, playlistId);
-                return Ok(new { Message = "Xóa playlist thành công" });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var userId = Guid.Parse(userIdString);
+            var result = await _interactionService.DeletePlaylistAsync(userId, playlistId);
+            return result.ToActionResult();
         }
 
         [HttpGet("playlist/{playlistId}")]

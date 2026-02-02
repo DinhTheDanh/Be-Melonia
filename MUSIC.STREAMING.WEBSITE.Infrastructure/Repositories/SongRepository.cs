@@ -209,5 +209,11 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         var count = await _connection.ExecuteScalarAsync<int>(sql, new { SongId = songId, ArtistId = artistId });
         return count > 0;
     }
+
+    public async Task RemoveGenresFromSongAsync(Guid songId)
+    {
+        var sql = "DELETE FROM song_genres WHERE song_id = @SongId";
+        await _connection.ExecuteAsync(sql, new { SongId = songId });
+    }
 }
 

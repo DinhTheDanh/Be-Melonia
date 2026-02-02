@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using MUSIC.STREAMING.WEBSITE.Core.Interfaces.Repository;
 using BCrypt.Net;
 using System.Net;
+using System.Security.Cryptography;
 
 
 namespace MUSIC.STREAMING.WEBSITE.Core.Services;
@@ -19,11 +20,14 @@ public class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
-    public AuthService(IConfiguration configuration, IUserRepository userRepository, IEmailService emailService)
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+
+    public AuthService(IConfiguration configuration, IUserRepository userRepository, IEmailService emailService, IRefreshTokenRepository refreshTokenRepository)
     {
         _configuration = configuration;
         _userRepository = userRepository;
         _emailService = emailService;
+        _refreshTokenRepository = refreshTokenRepository;
     }
     public async Task<AuthResponseDto> LoginWithGoogleAsync(string idToken)
     {
@@ -81,9 +85,12 @@ public class AuthService : IAuthService
             }
         }
         var token = GenerateJwtToken(user);
+        var refreshToken = await GenerateRefreshTokenAsync(user.UserId);
+
         return new AuthResponseDto
         {
             Token = token,
+            RefreshToken = refreshToken,
             FullName = user.FullName,
             Avatar = user.Avatar,
             Role = user.Role,
@@ -197,10 +204,12 @@ public class AuthService : IAuthService
 
         // Tạo Token trả về luôn 
         var token = GenerateJwtToken(newUser);
+        var refreshToken = await GenerateRefreshTokenAsync(newUser.UserId);
 
         return new AuthResponseDto
         {
             Token = token,
+            RefreshToken = refreshToken,
             FullName = newUser.FullName,
             Role = newUser.Role,
             IsNewUser = true
@@ -234,10 +243,12 @@ public class AuthService : IAuthService
 
         // 4. Thành công -> Tạo token
         var token = GenerateJwtToken(user);
+        var refreshToken = await GenerateRefreshTokenAsync(user.UserId);
 
         return new AuthResponseDto
         {
             Token = token,
+            RefreshToken = refreshToken,
             FullName = user.FullName,
             Avatar = user.Avatar,
             Role = user.Role,
@@ -343,5 +354,69 @@ public class AuthService : IAuthService
         user.UpdatedAt = DateTime.Now;
 
         await _userRepository.UpdateAsync(user.UserId, user);
+    }
+
+    // Tạo Refresh Token
+    private async Task<string> GenerateRefreshTokenAsync(Guid userId)
+    {
+        // Tạo token ngẫu nhiên
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        var tokenString = Convert.ToBase64String(randomBytes);
+
+        // Lấy thời gian hết hạn từ config (mặc định 7 ngày)
+        var jwtSettings = _configuration.GetSection("JwtSettings");
+        var refreshTokenDays = int.TryParse(jwtSettings["RefreshTokenDurationInDays"], out var days) ? days : 7;
+
+        var refreshToken = new RefreshToken
+        {
+            UserId = userId,
+            Token = tokenString,
+            ExpiresAt = DateTime.Now.AddDays(refreshTokenDays),
+            CreatedAt = DateTime.Now
+        };
+
+        await _refreshTokenRepository.CreateAsync(refreshToken);
+        return tokenString;
+    }
+
+    // Refresh Access Token
+    public async Task<TokenResponseDto> RefreshTokenAsync(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return null!;
+
+        var storedToken = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
+
+        if (storedToken == null || storedToken.IsRevoked || storedToken.IsExpired)
+            return null!;
+
+        // Lấy user
+        var user = await _userRepository.GetByIdAsync(storedToken.UserId);
+        if (user == null)
+            return null!;
+
+        // Revoke token cũ
+        await _refreshTokenRepository.RevokeAsync(refreshToken);
+
+        // Tạo token mới
+        var newAccessToken = GenerateJwtToken(user);
+        var newRefreshToken = await GenerateRefreshTokenAsync(user.UserId);
+
+        return new TokenResponseDto
+        {
+            Token = newAccessToken,
+            RefreshToken = newRefreshToken
+        };
+    }
+
+    // Đăng xuất
+    public async Task LogoutAsync(string refreshToken)
+    {
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            await _refreshTokenRepository.RevokeAsync(refreshToken);
+        }
     }
 }

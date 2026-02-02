@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MUSIC.STREAMING.WEBSITE.API.Extensions;
 using MUSIC.STREAMING.WEBSITE.Core.DTOs;
+using MUSIC.STREAMING.WEBSITE.Core.Helpers;
 using MUSIC.STREAMING.WEBSITE.Core.Interfaces.Repository;
 using MUSIC.STREAMING.WEBSITE.Core.Interfaces.Service;
 
@@ -174,40 +176,48 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         [HttpDelete("song/{songId}")]
         public async Task<IActionResult> DeleteSong(Guid songId)
         {
-            try
-            {
-                var artistId = Guid.Parse(User.FindFirst("UserId")?.Value!);
-                await _musicService.DeleteSongAsync(artistId, songId);
-                return Ok(new { Message = "Xóa bài hát thành công" });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var artistId = Guid.Parse(userIdString);
+            var result = await _musicService.DeleteSongAsync(artistId, songId);
+            return result.ToActionResult();
+        }
+
+        [Authorize]
+        [HttpPut("song/{songId}")]
+        public async Task<IActionResult> UpdateSong(Guid songId, [FromBody] UpdateSongDto dto)
+        {
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var artistId = Guid.Parse(userIdString);
+            var result = await _musicService.UpdateSongAsync(artistId, songId, dto);
+            return result.ToActionResult();
         }
 
         [Authorize]
         [HttpDelete("album/{albumId}")]
         public async Task<IActionResult> DeleteAlbum(Guid albumId)
         {
-            try
-            {
-                var artistId = Guid.Parse(User.FindFirst("UserId")?.Value!);
-                await _musicService.DeleteAlbumAsync(artistId, albumId);
-                return Ok(new { Message = "Xóa album thành công" });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var artistId = Guid.Parse(userIdString);
+            var result = await _musicService.DeleteAlbumAsync(artistId, albumId);
+            return result.ToActionResult();
+        }
+
+        [Authorize]
+        [HttpPut("album/{albumId}")]
+        public async Task<IActionResult> UpdateAlbum(Guid albumId, [FromBody] UpdateAlbumDto dto)
+        {
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var artistId = Guid.Parse(userIdString);
+            var result = await _musicService.UpdateAlbumAsync(artistId, albumId, dto);
+            return result.ToActionResult();
         }
     }
 }

@@ -80,5 +80,12 @@ public interface ISongRepository : IBaseRepository<Song>
     /// <param name="songId">ID bài hát</param>
     /// <returns>True nếu artist là chủ sở hữu, ngược lại False</returns>
     Task<bool> CheckSongOwnerAsync(Guid artistId, Guid songId);
+
+    /// <summary>
+    /// Xóa tất cả thể loại của bài hát
+    /// </summary>
+    /// <param name="songId">ID bài hát</param>
+    /// <returns></returns>
+    Task RemoveGenresFromSongAsync(Guid songId);
 }
 
