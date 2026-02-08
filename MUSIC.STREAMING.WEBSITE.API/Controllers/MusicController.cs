@@ -219,5 +219,31 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             var result = await _musicService.UpdateAlbumAsync(artistId, albumId, dto);
             return result.ToActionResult();
         }
+
+        /// <summary>
+        /// Lấy chi tiết album kèm danh sách bài hát
+        /// </summary>
+        [HttpGet("album/{albumId}")]
+        public async Task<IActionResult> GetAlbumDetails(Guid albumId, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        {
+            var result = await _musicService.GetAlbumDetailsAsync(albumId, pageIndex, pageSize);
+            if (result == null) return NotFound(new { Message = "Album không tồn tại" });
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Thêm bài hát vào album
+        /// </summary>
+        [Authorize]
+        [HttpPost("album/{albumId}/add-song/{songId}")]
+        public async Task<IActionResult> AddSongToAlbum(Guid albumId, Guid songId)
+        {
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var userId = Guid.Parse(userIdString);
+            var result = await _musicService.AddSongToAlbumAsync(userId, albumId, songId);
+            return result.ToActionResult();
+        }
     }
 }

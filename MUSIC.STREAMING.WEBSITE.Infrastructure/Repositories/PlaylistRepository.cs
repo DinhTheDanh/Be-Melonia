@@ -33,7 +33,7 @@ public class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepository
 
         var sql = @"
             SELECT p.playlist_id as PlaylistId, p.title, '' as Description, 
-                   u.full_name as CreatedBy, p.created_at as CreatedAt,
+                   u.full_name as CreatedBy, p.created_at as CreatedAt, p.updated_at as UpdatedAt,
                    COUNT(ps.song_id) as SongCount
             FROM playlists p
             LEFT JOIN users u ON p.user_id = u.user_id
@@ -74,7 +74,7 @@ public class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepository
 
         var sql = @"
             SELECT p.playlist_id as PlaylistId, p.title, '' as Description, 
-                   u.full_name as CreatedBy, p.created_at as CreatedAt,
+                   u.full_name as CreatedBy, p.created_at as CreatedAt, p.updated_at as UpdatedAt,
                    COUNT(ps.song_id) as SongCount
             FROM playlists p
             LEFT JOIN users u ON p.user_id = u.user_id

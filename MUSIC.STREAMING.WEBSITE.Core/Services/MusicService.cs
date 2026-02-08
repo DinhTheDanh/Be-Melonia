@@ -181,6 +181,7 @@ public class MusicService : IMusicService
         song.Title = dto.Title ?? song.Title;
         song.Thumbnail = dto.Thumbnail ?? song.Thumbnail;
         song.Lyrics = dto.Lyrics ?? song.Lyrics;
+        song.UpdatedAt = DateTime.Now;
         if (dto.AlbumId.HasValue)
         {
             song.AlbumId = dto.AlbumId.Value;
@@ -217,12 +218,41 @@ public class MusicService : IMusicService
 
         album.Title = dto.Title ?? album.Title;
         album.Thumbnail = dto.Thumbnail ?? album.Thumbnail;
+        album.UpdatedAt = DateTime.Now;
         if (dto.ReleaseDate.HasValue)
         {
             album.ReleaseDate = dto.ReleaseDate.Value;
         }
 
         await _albumRepo.UpdateAsync(albumId, album);
+        return Result.Success();
+    }
+
+    public async Task<dynamic> GetAlbumDetailsAsync(Guid albumId, int pageIndex, int pageSize)
+    {
+        return await _albumRepo.GetAlbumDetailsAsync(albumId, pageIndex, pageSize);
+    }
+
+    public async Task<Result> AddSongToAlbumAsync(Guid userId, Guid albumId, Guid songId)
+    {
+        // Kiểm tra album có tồn tại không
+        var album = await _albumRepo.GetByIdAsync(albumId);
+        if (album == null) return Result.NotFound("Album không tồn tại");
+
+        // Kiểm tra quyền sở hữu album
+        var isAlbumOwner = await _albumRepo.CheckAlbumOwnerAsync(userId, albumId);
+        if (!isAlbumOwner) return Result.Forbidden("Bạn không có quyền thêm bài hát vào album này");
+
+        // Kiểm tra bài hát có tồn tại không
+        var song = await _songRepo.GetByIdAsync(songId);
+        if (song == null) return Result.NotFound("Bài hát không tồn tại");
+
+        // Kiểm tra quyền sở hữu bài hát
+        var isSongOwner = await _songRepo.CheckSongOwnerAsync(userId, songId);
+        if (!isSongOwner) return Result.Forbidden("Bạn không có quyền thêm bài hát này vào album");
+
+        // Thêm bài hát vào album
+        await _albumRepo.AddSongToAlbumAsync(albumId, songId);
         return Result.Success();
     }
 }

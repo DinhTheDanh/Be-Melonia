@@ -248,9 +248,80 @@ DELETE /Music/album/{albumId}
 
 ---
 
+### 11. Get Album Details (Xem chi tiết album + bài hát)
+
+```
+GET /Music/album/{albumId}?pageIndex=1&pageSize=10
+```
+
+**Params:**
+
+- `albumId` (Guid) - ID album
+- `pageIndex` (int) - Trang danh sách bài hát (mặc định 1)
+- `pageSize` (int) - Số bài hát/trang (mặc định 10)
+
+**Response:**
+
+```json
+{
+  "Album": {
+    "AlbumId": "guid",
+    "Title": "Tên album",
+    "Thumbnail": "https://...",
+    "ReleaseDate": "2026-01-30",
+    "ArtistId": "guid",
+    "ArtistName": "Tên nghệ sĩ",
+    "CreatedAt": "2026-01-30T10:00:00",
+    "UpdatedAt": "2026-01-30T15:00:00"
+  },
+  "Songs": {
+    "Items": [...],
+    "PageIndex": 1,
+    "PageSize": 10,
+    "TotalRecords": 5,
+    "TotalPages": 1
+  }
+}
+```
+
+---
+
+### 12. Add Song to Album ✅
+
+```
+POST /Music/album/{albumId}/add-song/{songId}
+```
+
+**Params:**
+
+- `albumId` (Guid) - ID album
+- `songId` (Guid) - ID bài hát cần thêm
+
+**Note:**
+
+- Chỉ chủ sở hữu album VÀ bài hát mới có thể thực hiện
+- Bài hát sẽ được gắn vào album (cập nhật album_id)
+
+---
+
+### 13. Remove Song from Album ✅
+
+```
+DELETE /Interaction/album/{albumId}/remove-song/{songId}
+```
+
+**Params:**
+
+- `albumId` (Guid) - ID album
+- `songId` (Guid) - ID bài hát cần xóa khỏi album
+
+**Note:** Chỉ chủ sở hữu album mới có thể xóa bài hát khỏi album
+
+---
+
 ## 📋 PLAYLIST ENDPOINTS
 
-### 11. Get All Playlists (Search)
+### 14. Get All Playlists (Search)
 
 ```
 GET /Music/playlists?keyword=&pageIndex=1&pageSize=10
@@ -266,7 +337,7 @@ GET /Music/playlists?keyword=&pageIndex=1&pageSize=10
 
 ---
 
-### 12. Get My Playlists (Authorized) ✅
+### 15. Get My Playlists (Authorized) ✅
 
 ```
 GET /Music/my-playlists?keyword=&pageIndex=1&pageSize=10
@@ -278,7 +349,7 @@ GET /Music/my-playlists?keyword=&pageIndex=1&pageSize=10
 
 ---
 
-### 13. Create Playlist ✅
+### 16. Create Playlist ✅
 
 ```
 POST /Interaction/playlist
@@ -292,7 +363,7 @@ Content-Type: application/json
 
 ---
 
-### 14. Get Playlist Details ✅
+### 17. Get Playlist Details ✅
 
 ```
 GET /Interaction/playlist/{playlistId}?pageIndex=1&pageSize=10
@@ -326,7 +397,7 @@ GET /Interaction/playlist/{playlistId}?pageIndex=1&pageSize=10
 
 ---
 
-### 15. Update Playlist ✅
+### 18. Update Playlist ✅
 
 ```
 PUT /Interaction/playlist/{playlistId}
@@ -339,7 +410,7 @@ Content-Type: application/json
 
 ---
 
-### 16. Delete Playlist ✅
+### 19. Delete Playlist ✅
 
 ```
 DELETE /Interaction/playlist/{playlistId}
@@ -508,7 +579,9 @@ Content-Type: application/json
   "FileUrl": "https://...",
   "Duration": 180,
   "ArtistNames": "Artist 1, Artist 2",
-  "ArtistIds": ["guid1", "guid2"]
+  "ArtistIds": ["guid1", "guid2"],
+  "CreatedAt": "2026-01-30T10:00:00",
+  "UpdatedAt": "2026-01-31T15:30:00"
 }
 ```
 
@@ -520,7 +593,9 @@ Content-Type: application/json
   "Title": "Tên album",
   "Thumbnail": "https://...",
   "ReleaseDate": "2026-01-30",
-  "ArtistName": "Tên nghệ sĩ"
+  "ArtistName": "Tên nghệ sĩ",
+  "CreatedAt": "2026-01-30T10:00:00",
+  "UpdatedAt": "2026-01-31T15:30:00"
 }
 ```
 
@@ -532,7 +607,8 @@ Content-Type: application/json
   "Title": "Tên playlist",
   "Description": "Mô tả",
   "CreatedBy": "Tên người dùng",
-  "CreatedAt": "2026-01-30",
+  "CreatedAt": "2026-01-30T10:00:00",
+  "UpdatedAt": "2026-01-31T15:30:00",
   "SongCount": 5
 }
 ```

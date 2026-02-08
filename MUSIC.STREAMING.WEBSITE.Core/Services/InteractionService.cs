@@ -105,6 +105,7 @@ public class InteractionService : IInteractionService
         if (playlist.UserId != userId) return Result<Playlist>.Forbidden("Bạn không có quyền chỉnh sửa playlist này.");
 
         playlist.Title = title;
+        playlist.UpdatedAt = DateTime.Now;
         await _playlistRepo.UpdateAsync(playlistId, playlist);
         return Result<Playlist>.Success(playlist);
     }

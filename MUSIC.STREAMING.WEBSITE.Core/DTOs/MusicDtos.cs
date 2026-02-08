@@ -12,6 +12,8 @@ public class SongDto
 
     public string ArtistNames { get; set; }
     public List<Guid>? ArtistIds { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class AlbumDto
@@ -21,6 +23,8 @@ public class AlbumDto
     public string Thumbnail { get; set; }
     public string ArtistName { get; set; }
     public DateTime ReleaseDate { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class GenreDto
@@ -46,6 +50,7 @@ public class PlaylistDto
     public string? Description { get; set; }
     public string CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     public int SongCount { get; set; }
 }
 

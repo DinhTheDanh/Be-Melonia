@@ -150,4 +150,22 @@ public interface IMusicService
     /// <param name="dto">Thông tin cập nhật</param>
     /// <returns>Kết quả xử lý</returns>
     Task<Result> UpdateAlbumAsync(Guid artistId, Guid albumId, UpdateAlbumDto dto);
+
+    /// <summary>
+    /// Lấy chi tiết album kèm danh sách bài hát
+    /// </summary>
+    /// <param name="albumId">ID album</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Thông tin album và danh sách bài hát</returns>
+    Task<dynamic> GetAlbumDetailsAsync(Guid albumId, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Thêm bài hát vào album
+    /// </summary>
+    /// <param name="userId">ID người dùng (chủ album)</param>
+    /// <param name="albumId">ID album</param>
+    /// <param name="songId">ID bài hát</param>
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> AddSongToAlbumAsync(Guid userId, Guid albumId, Guid songId);
 }

@@ -84,7 +84,7 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         p.Add("Lim", pageSize);
 
         var sql = $@"
-            SELECT s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at,
+            SELECT s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at,
                    GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
             FROM songs s
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
@@ -125,7 +125,7 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         p.Add("Lim", pageSize);
 
         var sql = $@"
-            SELECT s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at,
+            SELECT s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at,
                    GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
             FROM songs s
             JOIN song_artists sa_check ON s.song_id = sa_check.song_id
@@ -176,7 +176,7 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         p.Add("Lim", pageSize);
 
         var sql = $@"
-            SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+            SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration, s.created_at, s.updated_at,
                    GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
             FROM songs s
             JOIN song_artists sa ON s.song_id = sa.song_id

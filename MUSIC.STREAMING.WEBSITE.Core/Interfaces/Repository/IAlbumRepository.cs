@@ -24,5 +24,29 @@ public interface IAlbumRepository : IBaseRepository<Album>
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Danh sách album phân trang</returns>
     Task<PagingResult<AlbumDto>> GetUserAlbumsAsync(Guid userId, string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy chi tiết album kèm danh sách bài hát
+    /// </summary>
+    /// <param name="albumId">ID album</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Thông tin album và danh sách bài hát</returns>
+    Task<dynamic> GetAlbumDetailsAsync(Guid albumId, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Thêm bài hát vào album
+    /// </summary>
+    /// <param name="albumId">ID album</param>
+    /// <param name="songId">ID bài hát</param>
+    Task AddSongToAlbumAsync(Guid albumId, Guid songId);
+
+    /// <summary>
+    /// Kiểm tra quyền sở hữu album
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <param name="albumId">ID album</param>
+    /// <returns>true nếu là chủ sở hữu</returns>
+    Task<bool> CheckAlbumOwnerAsync(Guid userId, Guid albumId);
 }
 

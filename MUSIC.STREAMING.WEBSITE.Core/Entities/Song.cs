@@ -27,5 +27,7 @@ public class Song
 
     public DateTime CreatedAt { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
     public string? FileHash { get; set; }
 }

@@ -15,4 +15,6 @@ public class Playlist
     public string? Thumbnail { get; set; }
     public bool IsPublic { get; set; } = true;
     public DateTime CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
 }
