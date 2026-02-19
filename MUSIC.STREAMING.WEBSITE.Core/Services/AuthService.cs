@@ -11,6 +11,8 @@ using MUSIC.STREAMING.WEBSITE.Core.Interfaces.Repository;
 using BCrypt.Net;
 using System.Net;
 using System.Security.Cryptography;
+using StackExchange.Redis;
+using System.Text.Json;
 
 
 namespace MUSIC.STREAMING.WEBSITE.Core.Services;
@@ -21,13 +23,15 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IConnectionMultiplexer _redis;
 
-    public AuthService(IConfiguration configuration, IUserRepository userRepository, IEmailService emailService, IRefreshTokenRepository refreshTokenRepository)
+    public AuthService(IConfiguration configuration, IUserRepository userRepository, IEmailService emailService, IRefreshTokenRepository refreshTokenRepository, IConnectionMultiplexer redis)
     {
         _configuration = configuration;
         _userRepository = userRepository;
         _emailService = emailService;
         _refreshTokenRepository = refreshTokenRepository;
+        _redis = redis;
     }
     public async Task<AuthResponseDto> LoginWithGoogleAsync(string idToken)
     {
@@ -308,21 +312,26 @@ public class AuthService : IAuthService
     public async Task ForgotPasswordAsync(string email)
     {
         var user = await _userRepository.GetByEmailAsync(email);
-
         if (user == null)
         {
             return;
         }
-
         if (user.AuthSource == "google") throw new Exception("Tài khoản Google không thể reset mật khẩu.");
 
         // Tạo Token ngẫu nhiên (UUID)
         string token = Guid.NewGuid().ToString();
 
-        // Lưu token vào DB (Hết hạn sau 15 phút)
-        user.ResetToken = token;
-        user.ResetTokenExpiry = DateTime.Now.AddMinutes(15);
-        await _userRepository.UpdateAsync(user.UserId, user);
+        // Lưu token vào Redis (Hết hạn sau 15 phút)
+        try
+        {
+            var db = _redis.GetDatabase();
+            string redisKey = $"reset_token:{token}";
+            await db.StringSetAsync(redisKey, user.UserId.ToString(), TimeSpan.FromMinutes(15));
+        }
+        catch (RedisException)
+        {
+            // Redis không available, tiếp tục gửi email (token không được cache nhưng vẫn an toàn)
+        }
 
         string resetLink = $"http://localhost:3000/reset-password?token={token}";
 
@@ -338,21 +347,37 @@ public class AuthService : IAuthService
     {
         if (dto.NewPassword != dto.ConfirmPassword) throw new Exception("Mật khẩu xác nhận không khớp.");
 
-        var user = await _userRepository.GetByResetTokenAsync(dto.Token);
-
-        if (user == null || user.ResetTokenExpiry < DateTime.Now)
+        string? userIdStr = null;
+        try
         {
-            throw new Exception("Đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
+            var db = _redis.GetDatabase();
+            string redisKey = $"reset_token:{dto.Token}";
+            var redisValue = await db.StringGetAsync(redisKey);
+            if (!redisValue.IsNullOrEmpty)
+            {
+                userIdStr = redisValue!;
+                // Xóa token khỏi Redis ngay sau khi đọc
+                await db.KeyDeleteAsync(redisKey);
+            }
+        }
+        catch (RedisException)
+        {
+            throw new Exception("Đặt lại mật khẩu không khả dụng, vui lòng thử lại sau.");
         }
 
+        if (string.IsNullOrEmpty(userIdStr))
+            throw new Exception("Đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
+
+        if (!Guid.TryParse(userIdStr, out var userId))
+            throw new Exception("Token không hợp lệ.");
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new Exception("Người dùng không tồn tại.");
+        }
         // Đổi mật khẩu
         user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
-
-        // Xóa Token để không dùng lại được nữa
-        user.ResetToken = null;
-        user.ResetTokenExpiry = null;
         user.UpdatedAt = DateTime.Now;
-
         await _userRepository.UpdateAsync(user.UserId, user);
     }
 
@@ -387,6 +412,15 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(refreshToken))
             return null!;
 
+        // Kiểm tra blacklist Redis - token đã bị logout
+        try
+        {
+            var db = _redis.GetDatabase();
+            var isBlacklisted = await db.KeyExistsAsync($"blacklist_refresh_token:{refreshToken}");
+            if (isBlacklisted) return null!;
+        }
+        catch (RedisException) { /* Redis lỗi -> bỏ qua blacklist check, tiếp tục xử lý */ }
+
         var storedToken = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
 
         if (storedToken == null || storedToken.IsRevoked || storedToken.IsExpired)
@@ -417,6 +451,14 @@ public class AuthService : IAuthService
         if (!string.IsNullOrWhiteSpace(refreshToken))
         {
             await _refreshTokenRepository.RevokeAsync(refreshToken);
+            // Blacklist refresh token trong Redis (bảo mật, ngăn dùng lại)
+            try
+            {
+                var db = _redis.GetDatabase();
+                TimeSpan ttl = TimeSpan.FromDays(7);
+                await db.StringSetAsync($"blacklist_refresh_token:{refreshToken}", "1", ttl);
+            }
+            catch (RedisException) { }
         }
     }
 }

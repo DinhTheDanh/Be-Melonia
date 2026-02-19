@@ -178,7 +178,7 @@ public class InteractionRepository : IInteractionRepository
         };
     }
 
-    public async Task<dynamic> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize)
+    public async Task<PlaylistDetailsDto?> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize)
     {
         var p = new DynamicParameters();
         p.Add("PlaylistId", playlistId);
@@ -191,8 +191,8 @@ public class InteractionRepository : IInteractionRepository
             LEFT JOIN users u ON p.user_id = u.user_id
             WHERE p.playlist_id = @PlaylistId";
 
-        var playlist = await _connection.QueryFirstOrDefaultAsync<dynamic>(playlistSql, p);
-        if (playlist == null) throw new Exception("Playlist không tồn tại");
+        var playlist = await _connection.QueryFirstOrDefaultAsync<PlaylistInfoDto>(playlistSql, p);
+        if (playlist == null) return null;
 
         // Đếm bài hát trong playlist
         var countSql = "SELECT COUNT(1) FROM playlist_songs WHERE playlist_id = @PlaylistId";
@@ -215,12 +215,12 @@ public class InteractionRepository : IInteractionRepository
             ORDER BY ps.added_at DESC
             LIMIT @Limit OFFSET @Offset";
 
-        var songs = await _connection.QueryAsync<dynamic>(songsSql, p);
+        var songs = await _connection.QueryAsync<SongDto>(songsSql, p);
 
-        return new
+        return new PlaylistDetailsDto
         {
             Playlist = playlist,
-            Songs = new
+            Songs = new PagingResult<SongDto>
             {
                 Data = songs,
                 TotalRecords = totalSongs,

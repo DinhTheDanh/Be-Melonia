@@ -93,4 +93,14 @@ public class UserRepository : BaseRepository<User>, IUserRepository
         var parameters = genreIds.Select(gId => new { UserId = userId, GenreId = gId });
         await _connection.ExecuteAsync(insertSql, parameters);
     }
+
+    public async Task<IEnumerable<Core.DTOs.GenreDto>> GetUserFavoriteGenresAsync(Guid userId)
+    {
+        var sql = @"
+            SELECT g.id AS Id, g.name AS Name, g.image_url AS ImageUrl
+            FROM user_favorite_genres ufg
+            INNER JOIN genres g ON ufg.genre_id = g.id
+            WHERE ufg.user_id = @UserId";
+        return await _connection.QueryAsync<Core.DTOs.GenreDto>(sql, new { UserId = userId });
+    }
 }

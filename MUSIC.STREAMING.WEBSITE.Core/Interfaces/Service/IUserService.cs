@@ -38,4 +38,11 @@ public interface IUserService
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Danh sách nghệ sĩ phân trang</returns>
     Task<PagingResult<ArtistDto>> GetArtistsAsync(string? keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy danh sách thể loại yêu thích của người dùng
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <returns>Danh sách thể loại yêu thích</returns>
+    Task<IEnumerable<GenreDto>> GetUserFavoriteGenresAsync(Guid userId);
 }

@@ -85,7 +85,7 @@ public interface IInteractionService
     /// <param name="pageIndex">Chỉ mục trang</param>
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Thông tin playlist và danh sách bài hát</returns>
-    Task<dynamic> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize);
+    Task<PlaylistDetailsDto?> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize);
 
     /// <summary>
     /// Xóa bài hát khỏi album

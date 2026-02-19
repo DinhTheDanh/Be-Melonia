@@ -54,3 +54,24 @@ public class PlaylistDto
     public int SongCount { get; set; }
 }
 
+public class AlbumDetailsDto
+{
+    public AlbumDto? Album { get; set; }
+    public PagingResult<SongDto>? Songs { get; set; }
+}
+
+public class PlaylistInfoDto
+{
+    public Guid PlaylistId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public Guid? CreatedById { get; set; }
+}
+
+public class PlaylistDetailsDto
+{
+    public PlaylistInfoDto? Playlist { get; set; }
+    public PagingResult<SongDto>? Songs { get; set; }
+}
+

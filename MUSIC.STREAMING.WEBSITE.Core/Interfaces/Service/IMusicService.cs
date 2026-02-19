@@ -158,7 +158,7 @@ public interface IMusicService
     /// <param name="pageIndex">Chỉ mục trang</param>
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Thông tin album và danh sách bài hát</returns>
-    Task<dynamic> GetAlbumDetailsAsync(Guid albumId, int pageIndex, int pageSize);
+    Task<AlbumDetailsDto?> GetAlbumDetailsAsync(Guid albumId, int pageIndex, int pageSize);
 
     /// <summary>
     /// Thêm bài hát vào album

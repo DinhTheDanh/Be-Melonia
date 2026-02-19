@@ -155,15 +155,9 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         [HttpGet("playlist/{playlistId}")]
         public async Task<IActionResult> GetPlaylistDetails(Guid playlistId, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
-            try
-            {
-                var result = await _interactionService.GetPlaylistDetailsAsync(playlistId, pageIndex, pageSize);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var result = await _interactionService.GetPlaylistDetailsAsync(playlistId, pageIndex, pageSize);
+            if (result == null) return NotFound(new { Message = "Playlist không tồn tại" });
+            return Ok(result);
         }
 
         [HttpDelete("album/{albumId}/remove-song/{songId}")]

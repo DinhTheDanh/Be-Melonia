@@ -1,4 +1,6 @@
-# 🎵 Music Streaming Website - API Documentation
+# 🎵 MUSIC STREAMING WEBSITE - API DOCUMENTATION
+
+---
 
 ## Base URL
 
@@ -82,6 +84,154 @@ http://localhost:5111/api/v1
 
 ---
 
+## 🔐 AUTH ENDPOINTS
+
+### Authentication Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. User đăng nhập (login/google-login)                         │
+│     ↓                                                           │
+│  2. Server trả về:                                              │
+│     • Access Token (trong response body) - hết hạn sau 60 phút  │
+│     • Refresh Token (trong HTTP-Only Cookie) - hết hạn sau 7 ngày│
+│     ↓                                                           │
+│  3. FE lưu Access Token, Cookie tự động lưu Refresh Token       │
+│     ↓                                                           │
+│  4. Khi Access Token hết hạn (nhận 401):                        │
+│     → Gọi /Auth/refresh-token (Cookie tự động gửi kèm)          │
+│     → Nhận Access Token mới                                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 1. Login
+
+```
+POST /Auth/login
+Content-Type: application/json
+
+{
+  "Email": "user@example.com",
+  "Password": "password123"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "Token": "eyJhbGciOiJIUzI1NiIs...",
+  "RefreshToken": "abc123def456...",
+  "Expiration": "2026-02-08T11:00:00Z"
+}
+```
+
+**Cookies được set:**
+
+```
+Set-Cookie: refreshToken=abc123...; HttpOnly; Secure; SameSite=Strict; Path=/; Expires=...
+```
+
+---
+
+### 2. Google Login
+
+```
+POST /Auth/google-login
+Content-Type: application/json
+
+{
+  "IdToken": "google-id-token-from-fe"
+}
+```
+
+**Response:** Giống Login
+
+---
+
+### 3. Register
+
+```
+POST /Auth/register
+Content-Type: application/json
+
+{
+  "Email": "user@example.com",
+  "Password": "password123",
+  "FullName": "Nguyễn Văn A"
+}
+```
+
+---
+
+### 4. Refresh Token
+
+```
+POST /Auth/refresh-token
+```
+
+**Note:**
+
+- Không cần body
+- Refresh token được gửi tự động qua Cookie
+- FE chỉ cần gọi khi nhận lỗi 401 (Access Token hết hạn)
+- Server kiểm tra blacklist Redis trước khi xử lý
+
+**Response (200 OK):**
+
+```json
+{
+  "Token": "eyJhbGciOiJIUzI1NiIs...",
+  "RefreshToken": "newRefreshToken...",
+  "Expiration": "2026-02-08T12:00:00Z"
+}
+```
+
+---
+
+### 5. Logout ✅
+
+```
+POST /Auth/logout
+```
+
+**Note:** Xóa refresh token khỏi database, blacklist token trong Redis (7 ngày), và xóa cookie
+
+---
+
+### 6. Forgot Password
+
+```
+POST /Auth/forgot-password
+Content-Type: application/json
+
+{
+  "Email": "user@example.com"
+}
+```
+
+**Note:** Gửi email chứa link reset password. Token được lưu trong Redis với TTL 15 phút.
+
+---
+
+### 7. Reset Password
+
+```
+POST /Auth/reset-password
+Content-Type: application/json
+
+{
+  "Token": "reset-token-from-email",
+  "NewPassword": "newpassword123"
+}
+```
+
+**Note:** Xác minh token từ Redis, sau khi reset thành công token sẽ bị xóa.
+
+---
+
 ## 🎵 MUSIC ENDPOINTS
 
 ### 1. Get All Songs (Search)
@@ -96,7 +246,7 @@ GET /Music/songs?keyword=&pageIndex=1&pageSize=10
 - `pageIndex` (int) - Trang (mặc định 1)
 - `pageSize` (int) - Số bản ghi/trang (mặc định 10)
 
-**Response:** PagingResult<SongDto>
+**Response:** PagingResult\<SongDto\>
 
 ---
 
@@ -108,7 +258,7 @@ GET /Music/my-songs?keyword=&pageIndex=1&pageSize=10
 
 **Params:** Giống Get All Songs
 
-**Response:** PagingResult<SongDto> của chính mình
+**Response:** PagingResult\<SongDto\> của chính mình
 
 ---
 
@@ -182,7 +332,7 @@ GET /Music/albums?keyword=&pageIndex=1&pageSize=10
 - `pageIndex` (int)
 - `pageSize` (int)
 
-**Response:** PagingResult<AlbumDto>
+**Response:** PagingResult\<AlbumDto\>
 
 ---
 
@@ -194,7 +344,7 @@ GET /Music/my-albums?keyword=&pageIndex=1&pageSize=10
 
 **Params:** Giống Get All Albums
 
-**Response:** PagingResult<AlbumDto> của chính mình
+**Response:** PagingResult\<AlbumDto\> của chính mình
 
 ---
 
@@ -333,7 +483,7 @@ GET /Music/playlists?keyword=&pageIndex=1&pageSize=10
 - `pageIndex` (int)
 - `pageSize` (int)
 
-**Response:** PagingResult<PlaylistDto>
+**Response:** PagingResult\<PlaylistDto\>
 
 ---
 
@@ -345,7 +495,7 @@ GET /Music/my-playlists?keyword=&pageIndex=1&pageSize=10
 
 **Params:** Giống Get All Playlists
 
-**Response:** PagingResult<PlaylistDto> của chính mình
+**Response:** PagingResult\<PlaylistDto\> của chính mình
 
 ---
 
@@ -422,7 +572,7 @@ DELETE /Interaction/playlist/{playlistId}
 
 ## 🎶 PLAYLIST SONG MANAGEMENT
 
-### 17. Add Song to Playlist ✅
+### 20. Add Song to Playlist ✅
 
 ```
 POST /Interaction/playlist/{playlistId}/add-song/{songId}
@@ -435,7 +585,7 @@ POST /Interaction/playlist/{playlistId}/add-song/{songId}
 
 ---
 
-### 18. Remove Song from Playlist ✅
+### 21. Remove Song from Playlist ✅
 
 ```
 DELETE /Interaction/playlist/{playlistId}/remove-song/{songId}
@@ -448,26 +598,9 @@ DELETE /Interaction/playlist/{playlistId}/remove-song/{songId}
 
 ---
 
-## 💿 ALBUM SONG MANAGEMENT
-
-### 19. Remove Song from Album ✅
-
-```
-DELETE /Interaction/album/{albumId}/remove-song/{songId}
-```
-
-**Params:**
-
-- `albumId` (Guid)
-- `songId` (Guid)
-
-**Note:** Chỉ chủ sở hữu album mới có thể xóa bài hát khỏi album
-
----
-
 ## ❤️ LIKE ENDPOINTS
 
-### 20. Toggle Like Song ✅
+### 22. Toggle Like Song ✅
 
 ```
 POST /Interaction/like/{songId}
@@ -488,7 +621,7 @@ POST /Interaction/like/{songId}
 
 ---
 
-### 21. Get Liked Songs ✅
+### 23. Get Liked Songs ✅
 
 ```
 GET /Interaction/liked-songs?pageIndex=1&pageSize=10
@@ -499,13 +632,13 @@ GET /Interaction/liked-songs?pageIndex=1&pageSize=10
 - `pageIndex` (int)
 - `pageSize` (int)
 
-**Response:** PagingResult<Song>
+**Response:** PagingResult\<Song\>
 
 ---
 
 ## 👥 FOLLOW ENDPOINTS
 
-### 22. Toggle Follow User ✅
+### 24. Toggle Follow User ✅
 
 ```
 POST /Interaction/follow/{targetUserId}
@@ -526,7 +659,7 @@ POST /Interaction/follow/{targetUserId}
 
 ---
 
-### 23. Get Following List ✅
+### 25. Get Following List ✅
 
 ```
 GET /Interaction/followings?pageIndex=1&pageSize=10
@@ -537,23 +670,23 @@ GET /Interaction/followings?pageIndex=1&pageSize=10
 - `pageIndex` (int)
 - `pageSize` (int)
 
-**Response:** PagingResult<ArtistDto>
+**Response:** PagingResult\<ArtistDto\>
 
 ---
 
 ## 🏷️ GENRE ENDPOINTS
 
-### 24. Get All Genres
+### 26. Get All Genres
 
 ```
 GET /Music/genres
 ```
 
-**Response:** IEnumerable<GenreDto>
+**Response:** IEnumerable\<GenreDto\>
 
 ---
 
-### 25. Create Genre
+### 27. Create Genre ✅
 
 ```
 POST /Music/genre
@@ -564,6 +697,136 @@ Content-Type: application/json
   "ImageUrl": "https://..."
 }
 ```
+
+---
+
+## 🤖 RECOMMENDATION ENDPOINTS
+
+### Thuật toán đề xuất
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Recommendation Algorithm (Content-Based Filtering)                      │
+│                                                                          │
+│  1. Lấy dữ liệu từ bảng user_song_stats (play_count, total_listen_time)│
+│     ↓                                                                    │
+│  2. Xác định Top Artists yêu thích:                                      │
+│     • JOIN song_artists ON sa.artist_id                                  │
+│     • ORDER BY SUM(play_count) DESC → lấy top 5 artist                  │
+│     ↓                                                                    │
+│  3. Xác định Top Genres yêu thích:                                       │
+│     • JOIN song_genres ON sg.genre_id                                    │
+│     • ORDER BY SUM(play_count) DESC → lấy top 5 genre                   │
+│     ↓                                                                    │
+│  4. Lấy bài hát/album từ artists + genres yêu thích                     │
+│     ↓                                                                    │
+│  5. Loại bỏ bài hát user đã nghe nhiều (có trong user_song_stats)        │
+│     ↓                                                                    │
+│  6. Trả về danh sách bài hát/album đề xuất                              │
+│     (Cache trong Redis 10 phút)                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Database Tables sử dụng
+
+| Bảng                | Mô tả                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| `user_song_stats`   | Lưu `play_count`, `total_listen_time`, `skip_count`, `last_played` cho mỗi cặp (user_id, song_id) |
+| `song_artists`      | Quan hệ N-N giữa songs và artists (`song_id`, `artist_id`)                                        |
+| `song_genres`       | Quan hệ N-N giữa songs và genres (`song_id`, `genre_id`)                                          |
+| `listening_history` | Lịch sử nghe (`user_id`, `song_id`, `listened_at`)                                                |
+
+---
+
+### 28. Get Recommended Songs ✅
+
+```
+GET /Recommendation/songs/{userId}?topN=20
+```
+
+**Params:**
+
+- `userId` (Guid) - ID người dùng cần lấy đề xuất
+- `topN` (int, optional) - Số bài hát đề xuất tối đa (mặc định 20)
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Lấy danh sách bài hát đề xuất thành công",
+  "Data": [
+    {
+      "Id": "guid",
+      "Title": "Bài hát đề xuất",
+      "Thumbnail": "https://...",
+      "FileUrl": "https://...",
+      "Duration": 240,
+      "ArtistNames": "Artist 1, Artist 2",
+      "ArtistIds": ["guid1", "guid2"],
+      "CreatedAt": "2026-01-30T10:00:00"
+    }
+  ]
+}
+```
+
+**Lưu ý:**
+
+- Kết quả được cache trong Redis 10 phút (key: `recommendation:songs:{userId}`)
+- Nếu user chưa có lịch sử nghe → trả về danh sách rỗng
+- Thuật toán: Lấy bài hát từ Top Artists + Top Genres yêu thích → loại bỏ bài đã nghe nhiều
+
+---
+
+### 29. Get Recommended Albums ✅
+
+```
+GET /Recommendation/albums/{userId}?topN=10
+```
+
+**Params:**
+
+- `userId` (Guid) - ID người dùng cần lấy đề xuất
+- `topN` (int, optional) - Số album đề xuất tối đa (mặc định 10)
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Lấy danh sách album đề xuất thành công",
+  "Data": [
+    {
+      "AlbumId": "guid",
+      "Title": "Album đề xuất",
+      "Thumbnail": "https://...",
+      "ReleaseDate": "2026-01-30",
+      "ArtistName": "Tên nghệ sĩ",
+      "CreatedAt": "2026-01-30T10:00:00"
+    }
+  ]
+}
+```
+
+**Lưu ý:**
+
+- Kết quả được cache trong Redis 10 phút (key: `recommendation:albums:{userId}`)
+- Thuật toán: Lấy Top Artists yêu thích → lấy album của các artist đó
+
+---
+
+## 🔴 REDIS CACHING
+
+### Cache Strategy
+
+| Feature                 | Cache Key Pattern                     | TTL     | Invalidation                                |
+| ----------------------- | ------------------------------------- | ------- | ------------------------------------------- |
+| Genres                  | `genres:all`                          | 24h     | Khi tạo genre mới                           |
+| Album Details           | `album:{id}:details:{page}:{size}`    | 10 phút | Khi update/delete album, add/remove song    |
+| Liked Songs             | `liked_songs:{userId}:{page}:{size}`  | 10 phút | Khi toggle like                             |
+| Playlist Details        | `playlist:{id}:details:{page}:{size}` | 10 phút | Khi update/delete playlist, add/remove song |
+| Recommended Songs       | `recommendation:songs:{userId}`       | 10 phút | Tự hết hạn                                  |
+| Recommended Albums      | `recommendation:albums:{userId}`      | 10 phút | Tự hết hạn                                  |
+| Reset Password Token    | `reset_token:{token}`                 | 15 phút | Khi reset thành công                        |
+| Blacklist Refresh Token | `blacklist_refresh_token:{token}`     | 7 ngày  | Tự hết hạn                                  |
 
 ---
 
@@ -613,7 +876,7 @@ Content-Type: application/json
 }
 ```
 
-### PagingResult<T>
+### PagingResult\<T\>
 
 ```json
 {
@@ -659,6 +922,15 @@ Content-Type: application/json
 
 | #   | Endpoint                                       | Method | Auth | Desc                         |
 | --- | ---------------------------------------------- | ------ | ---- | ---------------------------- |
+| -   | **AUTH**                                       |        |      |                              |
+| A1  | `/Auth/login`                                  | POST   | ❌   | Đăng nhập                    |
+| A2  | `/Auth/google-login`                           | POST   | ❌   | Đăng nhập Google             |
+| A3  | `/Auth/register`                               | POST   | ❌   | Đăng ký                      |
+| A4  | `/Auth/refresh-token`                          | POST   | ❌   | Làm mới token                |
+| A5  | `/Auth/logout`                                 | POST   | ✅   | Đăng xuất                    |
+| A6  | `/Auth/forgot-password`                        | POST   | ❌   | Quên mật khẩu                |
+| A7  | `/Auth/reset-password`                         | POST   | ❌   | Đặt lại mật khẩu             |
+| -   | **MUSIC**                                      |        |      |                              |
 | 1   | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)      |
 | 2   | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình (search)    |
 | 3   | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                  |
@@ -669,22 +941,29 @@ Content-Type: application/json
 | 8   | `/Music/album`                                 | POST   | ✅   | Tạo album                    |
 | 9   | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album               |
 | 10  | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                    |
-| 11  | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)     |
-| 12  | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình (search)   |
-| 13  | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                 |
-| 14  | `/Interaction/playlist/{id}`                   | GET    | ❌   | Chi tiết playlist            |
-| 15  | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist            |
-| 16  | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                 |
-| 17  | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist    |
-| 18  | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist    |
-| 19  | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album       |
-| 20  | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát       |
-| 21  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích  |
-| 22  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user    |
-| 23  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi |
-| 24  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại              |
-| 25  | `/Music/genre`                                 | POST   | ✅   | Tạo thể loại                 |
+| 11  | `/Music/album/{id}`                            | GET    | ❌   | Chi tiết album + bài hát     |
+| 12  | `/Music/album/{id}/add-song/{sid}`             | POST   | ✅   | Thêm bài hát vào album       |
+| 13  | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)     |
+| 14  | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình (search)   |
+| -   | **INTERACTION**                                |        |      |                              |
+| 15  | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                 |
+| 16  | `/Interaction/playlist/{id}`                   | GET    | ❌   | Chi tiết playlist            |
+| 17  | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist            |
+| 18  | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                 |
+| 19  | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist    |
+| 20  | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist    |
+| 21  | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album       |
+| 22  | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát       |
+| 23  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích  |
+| 24  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user    |
+| 25  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi |
+| -   | **GENRE**                                      |        |      |                              |
+| 26  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại              |
+| 27  | `/Music/genre`                                 | POST   | ✅   | Tạo thể loại                 |
+| -   | **RECOMMENDATION**                             |        |      |                              |
+| 28  | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát              |
+| 29  | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                |
 
 ---
 
-**Total: 25 Endpoints** ✅
+**Total: 7 Auth + 29 Feature = 36 Endpoints** ✅

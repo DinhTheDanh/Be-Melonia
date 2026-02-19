@@ -18,6 +18,7 @@
           "Microsoft.AspNetCore.Authentication.JwtBearer": "8.0.11",
           "Microsoft.AspNetCore.OpenApi": "8.0.22",
           "MimeKit": "2.8.0",
+          "StackExchange.Redis": "2.10.14",
           "Swashbuckle.AspNetCore": "6.6.2"
         },
         "runtime": {
@@ -310,11 +311,32 @@
           }
         }
       },
+      "Pipelines.Sockets.Unofficial/2.2.8": {
+        "runtime": {
+          "lib/net5.0/Pipelines.Sockets.Unofficial.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "2.2.8.1080"
+          }
+        }
+      },
       "Portable.BouncyCastle/1.8.5": {
         "runtime": {
           "lib/netstandard2.0/BouncyCastle.Crypto.dll": {
             "assemblyVersion": "1.8.5.0",
             "fileVersion": "1.8.5.50"
+          }
+        }
+      },
+      "StackExchange.Redis/2.10.14": {
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
+          "Pipelines.Sockets.Unofficial": "2.2.8",
+          "System.IO.Hashing": "9.0.10"
+        },
+        "runtime": {
+          "lib/net8.0/StackExchange.Redis.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.10.14.64328"
           }
         }
       },
@@ -375,6 +397,14 @@
           }
         }
       },
+      "System.IO.Hashing/9.0.10": {
+        "runtime": {
+          "lib/net8.0/System.IO.Hashing.dll": {
+            "assemblyVersion": "9.0.0.10",
+            "fileVersion": "9.0.1025.47515"
+          }
+        }
+      },
       "System.Management/7.0.2": {
         "dependencies": {
           "System.CodeDom": "7.0.0"
@@ -406,6 +436,7 @@
           "Microsoft.AspNetCore.Http": "2.3.0",
           "Microsoft.Extensions.Configuration.Abstractions": "10.0.1",
           "MimeKit": "2.8.0",
+          "StackExchange.Redis": "2.10.14",
           "System.IdentityModel.Tokens.Jwt": "8.15.0"
         },
         "runtime": {
@@ -634,12 +665,26 @@
       "path": "newtonsoft.json/13.0.4",
       "hashPath": "newtonsoft.json.13.0.4.nupkg.sha512"
     },
+    "Pipelines.Sockets.Unofficial/2.2.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-zG2FApP5zxSx6OcdJQLbZDk2AVlN2BNQD6MorwIfV6gVj0RRxWPEp2LXAxqDGZqeNV1Zp0BNPcNaey/GXmTdvQ==",
+      "path": "pipelines.sockets.unofficial/2.2.8",
+      "hashPath": "pipelines.sockets.unofficial.2.2.8.nupkg.sha512"
+    },
     "Portable.BouncyCastle/1.8.5": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-EaCgmntbH1sOzemRTqyXSqYjB6pLH7VCYHhhDYZ59guHSD5qPwhIYa7kfy0QUlmTRt9IXhaXdFhNuBUArp70Ng==",
       "path": "portable.bouncycastle/1.8.5",
       "hashPath": "portable.bouncycastle.1.8.5.nupkg.sha512"
+    },
+    "StackExchange.Redis/2.10.14": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7SaubYT00NJrMg2KFK7N1ovK6XGz7RMdwB49+AOKDYkL5W2eMWxSNolrX/GF7hpwFfy/Dj2+Cj29wi4VZSW/DA==",
+      "path": "stackexchange.redis/2.10.14",
+      "hashPath": "stackexchange.redis.2.10.14.nupkg.sha512"
     },
     "Swashbuckle.AspNetCore/6.6.2": {
       "type": "package",
@@ -682,6 +727,13 @@
       "sha512": "sha512-dpodi7ixz6hxK8YCBYAWzm0IA8JYXoKcz0hbCbNifo519//rjUI0fBD8rfNr+IGqq+2gm4oQoXwHk09LX5SqqQ==",
       "path": "system.identitymodel.tokens.jwt/8.15.0",
       "hashPath": "system.identitymodel.tokens.jwt.8.15.0.nupkg.sha512"
+    },
+    "System.IO.Hashing/9.0.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9gv5z71xaWWmcGEs4bXdreIhKp2kYLK2fvPK5gQkgnWMYvZ8ieaxKofDjxL3scZiEYfi/yW2nJTiKV2awcWEdA==",
+      "path": "system.io.hashing/9.0.10",
+      "hashPath": "system.io.hashing.9.0.10.nupkg.sha512"
     },
     "System.Management/7.0.2": {
       "type": "package",

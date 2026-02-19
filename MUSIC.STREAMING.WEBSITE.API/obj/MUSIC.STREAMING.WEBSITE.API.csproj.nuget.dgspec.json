@@ -83,6 +83,10 @@
               "target": "Package",
               "version": "[2.8.0, )"
             },
+            "StackExchange.Redis": {
+              "target": "Package",
+              "version": "[2.10.14, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.6.2, )"
@@ -190,6 +194,10 @@
             "MimeKit": {
               "target": "Package",
               "version": "[2.8.0, )"
+            },
+            "StackExchange.Redis": {
+              "target": "Package",
+              "version": "[2.10.14, )"
             },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",

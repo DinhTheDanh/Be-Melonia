@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Text.Json;
 using Dapper;
 using MUSIC.STREAMING.WEBSITE.Core.DTOs;
 using MUSIC.STREAMING.WEBSITE.Core.Entities;
@@ -89,7 +90,7 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
         };
     }
 
-    public async Task<dynamic> GetAlbumDetailsAsync(Guid albumId, int pageIndex, int pageSize)
+    public async Task<AlbumDetailsDto?> GetAlbumDetailsAsync(Guid albumId, int pageIndex, int pageSize)
     {
         // Lấy thông tin album
         var albumSql = @"
@@ -100,7 +101,7 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
             WHERE a.album_id = @AlbumId";
         var album = await _connection.QueryFirstOrDefaultAsync<AlbumDto>(albumSql, new { AlbumId = albumId });
 
-        if (album == null) return null!;
+        if (album == null) return null;
 
         // Đếm tổng số bài hát trong album
         var countSql = "SELECT COUNT(1) FROM songs WHERE album_id = @AlbumId";
@@ -122,7 +123,7 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
 
         var songs = await _connection.QueryAsync<SongDto>(songsSql, new { AlbumId = albumId, Off = offset, Lim = pageSize });
 
-        return new
+        return new AlbumDetailsDto
         {
             Album = album,
             Songs = new PagingResult<SongDto>

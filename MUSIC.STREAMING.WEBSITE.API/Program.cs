@@ -11,9 +11,23 @@ using MUSIC.STREAMING.WEBSITE.Infrastructure.Repositories;
 using MySqlConnector;
 using MUSIC.STREAMING.WEBSITE.Infrastructure;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
+var redisConnectionString = builder.Configuration.GetSection("Redis:Connection").Value ?? "localhost:6379";
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = ConfigurationOptions.Parse(redisConnectionString, true);
+
+    configuration.AbortOnConnectFail = false;
+
+    configuration.ConnectTimeout = 5000;
+
+    return ConnectionMultiplexer.Connect(configuration);
+});
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
 // Cấu hình Dommel: Tự động biến đổi PascalCase -> snake_case
@@ -38,6 +52,10 @@ builder.Services.AddScoped<IAlbumRepository, AlbumRepository>();
 builder.Services.AddScoped<IGenreRepository, GenreRepository>();
 builder.Services.AddScoped<IPlaylistRepository, PlaylistRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+// Recommendation
+builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 
 // Cấu hình JWT 
 // Lấy Key từ appsettings.json

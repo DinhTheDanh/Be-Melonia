@@ -92,4 +92,9 @@ public class UserService : IUserService
             ToRecord = result.ToRecord
         };
     }
+
+    public async Task<IEnumerable<GenreDto>> GetUserFavoriteGenresAsync(Guid userId)
+    {
+        return await _userRepository.GetUserFavoriteGenresAsync(userId);
+    }
 }

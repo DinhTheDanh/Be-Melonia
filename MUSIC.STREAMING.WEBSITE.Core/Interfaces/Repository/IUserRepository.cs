@@ -52,4 +52,11 @@ public interface IUserRepository : IBaseRepository<User>
     /// <param name="genreIds">Danh sách ID thể loại yêu thích</param>
     /// <returns> </returns>
     Task AddUserFavoriteGenresAsync(Guid userId, List<Guid> genreIds);
+
+    /// <summary>
+    /// Lấy danh sách thể loại yêu thích của người dùng
+    /// </summary>
+    /// <param name="userId">ID của người dùng</param>
+    /// <returns>Danh sách thể loại yêu thích</returns>
+    Task<IEnumerable<GenreDto>> GetUserFavoriteGenresAsync(Guid userId);
 }
