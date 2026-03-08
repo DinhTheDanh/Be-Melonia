@@ -23,7 +23,7 @@ public interface IInteractionService
     /// <param name="pageIndex">Chỉ mục trang</param>
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Danh sách bài hát đã thích phân trang</returns>
-    Task<PagingResult<Song>> GetLikedSongsAsync(Guid userId, int pageIndex, int pageSize);
+    Task<PagingResult<SongDto>> GetLikedSongsAsync(Guid userId, int pageIndex, int pageSize);
 
     /// <summary>
     /// Thêm bài hát vào playlist
@@ -66,9 +66,17 @@ public interface IInteractionService
     /// </summary>
     /// <param name="userId">ID người dùng (chủ playlist)</param>
     /// <param name="playlistId">ID playlist</param>
-    /// <param name="title">Tiêu đề mới</param>
+    /// <param name="dto">Dữ liệu cập nhật</param>
     /// <returns>Kết quả với Playlist đã cập nhật</returns>
-    Task<Result<Playlist>> UpdatePlaylistAsync(Guid userId, Guid playlistId, string title);
+    Task<Result<Playlist>> UpdatePlaylistAsync(Guid userId, Guid playlistId, UpdatePlaylistDto dto);
+
+    /// <summary>
+    /// Chuyển đổi trạng thái công khai/riêng tư của playlist
+    /// </summary>
+    /// <param name="userId">ID người dùng (chủ playlist)</param>
+    /// <param name="playlistId">ID playlist</param>
+    /// <returns>Kết quả với trạng thái mới</returns>
+    Task<Result<(bool IsPublic, string Message)>> TogglePlaylistVisibilityAsync(Guid userId, Guid playlistId);
 
     /// <summary>
     /// Xóa playlist

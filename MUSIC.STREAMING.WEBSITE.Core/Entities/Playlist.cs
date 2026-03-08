@@ -13,6 +13,7 @@ public class Playlist
     public required string Title { get; set; }
     public Guid UserId { get; set; }
     public string? Thumbnail { get; set; }
+    public string? Description { get; set; }
     public bool IsPublic { get; set; } = true;
     public DateTime CreatedAt { get; set; }
 

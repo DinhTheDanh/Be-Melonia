@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace MUSIC.STREAMING.WEBSITE.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     public class RecommendationController : ControllerBase
     {
         private readonly IRecommendationService _recommendationService;
@@ -19,15 +19,15 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         [HttpGet("songs/{userId}")]
         public async Task<IActionResult> GetRecommendedSongs(Guid userId, int topN = 20)
         {
-            var songIds = await _recommendationService.GetRecommendedSongIdsAsync(userId, topN);
-            return Ok(songIds);
+            var songs = await _recommendationService.GetRecommendedSongsAsync(userId, topN);
+            return Ok(new { Message = "Lấy danh sách bài hát đề xuất thành công", Data = songs });
         }
 
         [HttpGet("albums/{userId}")]
         public async Task<IActionResult> GetRecommendedAlbums(Guid userId, int topN = 10)
         {
-            var albumIds = await _recommendationService.GetRecommendedAlbumIdsAsync(userId, topN);
-            return Ok(albumIds);
+            var albums = await _recommendationService.GetRecommendedAlbumsAsync(userId, topN);
+            return Ok(new { Message = "Lấy danh sách album đề xuất thành công", Data = albums });
         }
     }
 }

@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using MUSIC.STREAMING.WEBSITE.Core.Interfaces.Repository;
+using MUSIC.STREAMING.WEBSITE.Core.Helpers;
 using BCrypt.Net;
 using System.Net;
 using System.Security.Cryptography;
@@ -60,6 +61,7 @@ public class AuthService : IAuthService
                 Username = payload.Email,
                 FullName = payload.Name,
                 Avatar = payload.Picture,
+                Banner = ImageHelper.GenerateCover(payload.Name ?? payload.Email, Guid.NewGuid().ToString()),
                 AuthSource = "google",
                 ExternalId = payload.Subject,
                 Role = "User",
@@ -132,6 +134,7 @@ public class AuthService : IAuthService
 
         var claims = new[]
         {
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new Claim("UserId", user.UserId.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
@@ -182,6 +185,10 @@ public class AuthService : IAuthService
             finalAvatarUrl = $"https://ui-avatars.com/api/?name={encodedName}&background=random&color=fff&size=128&bold=true";
         }
 
+        // Tạo banner tự động
+        string displayName = dto.FullName ?? dto.Username;
+        string bannerUrl = ImageHelper.GenerateCover(displayName, Guid.NewGuid().ToString());
+
         // Tạo User entity
         var newUser = new User
         {
@@ -189,8 +196,9 @@ public class AuthService : IAuthService
             Email = dto.Email,
             Username = dto.Username,
             Password = passwordHash, // Lưu pass đã mã hóa
-            FullName = dto.FullName ?? dto.Username,
+            FullName = displayName,
             Avatar = finalAvatarUrl,
+            Banner = bannerUrl,
             Role = "User",
             AuthSource = "local", // Đánh dấu là đăng ký thường
             IsActive = true,

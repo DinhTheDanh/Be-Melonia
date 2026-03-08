@@ -31,6 +31,18 @@ public class MusicService : IMusicService
         _redis = redis;
     }
 
+    private async Task InvalidateCacheByPatternAsync(string pattern)
+    {
+        try
+        {
+            var db = _redis.GetDatabase();
+            await db.ScriptEvaluateAsync(
+                "local keys = redis.call('keys', ARGV[1]) for i=1,#keys do redis.call('unlink', keys[i]) end return #keys",
+                values: new RedisValue[] { pattern });
+        }
+        catch (Exception) { }
+    }
+
     public async Task<IEnumerable<GenreDto>> GetAllGenresAsync()
     {
         string cacheKey = "genres:all";
@@ -211,13 +223,12 @@ public class MusicService : IMusicService
 
     public async Task<Playlist> CreatePlaylistAsync(Guid userId, CreatePlaylistDto dto)
     {
-        var thumb = !string.IsNullOrEmpty(dto.Thumbnail) ? dto.Thumbnail : ImageHelper.GenerateCover(dto.Title, "Playlist");
         var playlist = new Playlist
         {
             PlaylistId = Guid.NewGuid(),
             UserId = userId,
             Title = dto.Title,
-            Thumbnail = thumb,
+            Thumbnail = dto.Thumbnail,
             IsPublic = dto.IsPublic,
             CreatedAt = DateTime.Now
         };
@@ -238,6 +249,8 @@ public class MusicService : IMusicService
         song.Title = dto.Title ?? song.Title;
         song.Thumbnail = dto.Thumbnail ?? song.Thumbnail;
         song.Lyrics = dto.Lyrics ?? song.Lyrics;
+        if (dto.IsPublic.HasValue)
+            song.IsPublic = dto.IsPublic.Value;
         song.UpdatedAt = DateTime.Now;
         if (dto.AlbumId.HasValue)
         {
@@ -302,18 +315,7 @@ public class MusicService : IMusicService
 
         await _albumRepo.UpdateAsync(albumId, album);
         // [REDIS] Xóa cache chi tiết Album (mọi page)
-        try
-        {
-            var db = _redis.GetDatabase();
-            var endpoints = _redis.GetEndPoints();
-            foreach (var endpoint in endpoints)
-            {
-                var server = _redis.GetServer(endpoint);
-                foreach (var key in server.Keys(pattern: $"album:{albumId}:details:*"))
-                    await db.KeyDeleteAsync(key);
-            }
-        }
-        catch (RedisException) { }
+        await InvalidateCacheByPatternAsync($"album:{albumId}:details:*");
         return Result.Success();
     }
 
@@ -326,18 +328,7 @@ public class MusicService : IMusicService
 
         await _albumRepo.DeleteAsync(albumId);
         // [REDIS] Xóa cache chi tiết Album (mọi page)
-        try
-        {
-            var db = _redis.GetDatabase();
-            var endpoints = _redis.GetEndPoints();
-            foreach (var endpoint in endpoints)
-            {
-                var server = _redis.GetServer(endpoint);
-                foreach (var key in server.Keys(pattern: $"album:{albumId}:details:*"))
-                    await db.KeyDeleteAsync(key);
-            }
-        }
-        catch (RedisException) { }
+        await InvalidateCacheByPatternAsync($"album:{albumId}:details:*");
         return Result.Success();
     }
 
@@ -357,18 +348,7 @@ public class MusicService : IMusicService
 
         await _albumRepo.AddSongToAlbumAsync(albumId, songId);
         // [REDIS] Xóa cache chi tiết Album (mọi page)
-        try
-        {
-            var db = _redis.GetDatabase();
-            var endpoints = _redis.GetEndPoints();
-            foreach (var endpoint in endpoints)
-            {
-                var server = _redis.GetServer(endpoint);
-                foreach (var key in server.Keys(pattern: $"album:{albumId}:details:*"))
-                    await db.KeyDeleteAsync(key);
-            }
-        }
-        catch (RedisException) { }
+        await InvalidateCacheByPatternAsync($"album:{albumId}:details:*");
         return Result.Success();
     }
 }

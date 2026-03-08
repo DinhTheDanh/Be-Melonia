@@ -32,7 +32,7 @@ public class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepository
         p.Add("Lim", pageSize);
 
         var sql = @"
-            SELECT p.playlist_id as PlaylistId, p.title, '' as Description, 
+            SELECT p.playlist_id as PlaylistId, p.title, p.thumbnail, p.description,
                    u.full_name as CreatedBy, p.created_at as CreatedAt, p.updated_at as UpdatedAt,
                    COUNT(ps.song_id) as SongCount
             FROM playlists p
@@ -40,7 +40,7 @@ public class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepository
             LEFT JOIN playlist_songs ps ON p.playlist_id = ps.playlist_id
             WHERE p.user_id = @UserId 
             AND (p.title LIKE @Keyword OR @Keyword = '')
-            GROUP BY p.playlist_id
+            GROUP BY p.playlist_id, p.title, p.thumbnail, p.description, u.full_name, p.created_at, p.updated_at
             ORDER BY p.created_at DESC
             LIMIT @Lim OFFSET @Off";
 
@@ -73,14 +73,14 @@ public class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepository
         p.Add("Lim", pageSize);
 
         var sql = @"
-            SELECT p.playlist_id as PlaylistId, p.title, '' as Description, 
+            SELECT p.playlist_id as PlaylistId, p.title, p.thumbnail, p.description,
                    u.full_name as CreatedBy, p.created_at as CreatedAt, p.updated_at as UpdatedAt,
                    COUNT(ps.song_id) as SongCount
             FROM playlists p
             LEFT JOIN users u ON p.user_id = u.user_id
             LEFT JOIN playlist_songs ps ON p.playlist_id = ps.playlist_id
             WHERE (p.title LIKE @Keyword OR @Keyword = '')
-            GROUP BY p.playlist_id
+            GROUP BY p.playlist_id, p.title, p.thumbnail, p.description, u.full_name, p.created_at, p.updated_at
             ORDER BY p.created_at DESC
             LIMIT @Lim OFFSET @Off";
 

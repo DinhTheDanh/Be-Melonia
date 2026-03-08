@@ -87,5 +87,12 @@ public interface ISongRepository : IBaseRepository<Song>
     /// <param name="songId">ID bài hát</param>
     /// <returns></returns>
     Task RemoveGenresFromSongAsync(Guid songId);
+
+    /// <summary>
+    /// Lấy danh sách bài hát theo danh sách ID
+    /// </summary>
+    /// <param name="songIds">Danh sách ID bài hát</param>
+    /// <returns>Danh sách SongDto</returns>
+    Task<List<SongDto>> GetSongsByIdsAsync(List<Guid> songIds);
 }
 

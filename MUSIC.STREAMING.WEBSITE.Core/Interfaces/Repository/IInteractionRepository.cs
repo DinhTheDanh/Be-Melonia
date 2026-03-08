@@ -21,7 +21,7 @@ public interface IInteractionRepository
     /// <param name="pageIndex">Số trang</param>
     /// <param name="pageSize">Số lượng bản ghi trên mỗi trang</param>
     /// <returns> Kết quả phân trang</returns>
-    Task<PagingResult<Song>> GetLikedSongsAsync(Guid userId, int pageIndex, int pageSize);
+    Task<PagingResult<SongDto>> GetLikedSongsAsync(Guid userId, int pageIndex, int pageSize);
 
     /// <summary>
     /// Thêm bài hát vào danh sách phát

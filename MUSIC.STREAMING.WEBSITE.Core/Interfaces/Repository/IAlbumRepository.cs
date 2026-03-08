@@ -48,5 +48,12 @@ public interface IAlbumRepository : IBaseRepository<Album>
     /// <param name="albumId">ID album</param>
     /// <returns>true nếu là chủ sở hữu</returns>
     Task<bool> CheckAlbumOwnerAsync(Guid userId, Guid albumId);
+
+    /// <summary>
+    /// Lấy danh sách album theo danh sách ID
+    /// </summary>
+    /// <param name="albumIds">Danh sách ID album</param>
+    /// <returns>Danh sách AlbumDto</returns>
+    Task<List<AlbumDto>> GetAlbumsByIdsAsync(List<Guid> albumIds);
 }
 

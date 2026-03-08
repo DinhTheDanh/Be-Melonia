@@ -27,6 +27,8 @@ public class UserService : IUserService
             FullName = user.FullName,
             Bio = user.Bio,
             Avatar = user.Avatar,
+            Banner = user.Banner,
+            ArtistType = user.ArtistType,
             Role = user.Role
         };
     }
@@ -79,6 +81,7 @@ public class UserService : IUserService
             UserId = u.UserId,
             FullName = u.FullName,
             Avatar = u.Avatar,
+            Banner = u.Banner,
             Bio = u.Bio,
             ArtistType = u.ArtistType
         });

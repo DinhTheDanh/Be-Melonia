@@ -14,7 +14,7 @@ public class AuthResponseDto
 
 public class RefreshTokenRequestDto
 {
-    public required string RefreshToken { get; set; }
+    public string? RefreshToken { get; set; }
 }
 
 public class TokenResponseDto

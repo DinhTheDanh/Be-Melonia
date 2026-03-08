@@ -23,6 +23,7 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             {
                 var result = await _authService.LoginWithGoogleAsync(loginDto.IdToken);
                 SetTokenCookie(result.Token);
+                SetRefreshTokenCookie(result.RefreshToken);
                 return Ok(new
                 {
                     FullName = result.FullName,
@@ -64,25 +65,40 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto? dto)
         {
-            // Revoke refresh token nếu có
-            if (dto != null && !string.IsNullOrEmpty(dto.RefreshToken))
+            // Lấy refresh token từ body hoặc cookie
+            var refreshToken = dto?.RefreshToken;
+            if (string.IsNullOrWhiteSpace(refreshToken))
             {
-                await _authService.LogoutAsync(dto.RefreshToken);
+                refreshToken = Request.Cookies["refresh_token"];
+            }
+
+            // Revoke refresh token nếu có
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                await _authService.LogoutAsync(refreshToken);
             }
 
             Response.Cookies.Delete("jwt");
+            Response.Cookies.Delete("refresh_token");
             return Ok(new { Message = "Đăng xuất thành công" });
         }
 
         [HttpPost("refresh-token")]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto dto)
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto? dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.RefreshToken))
+            // Lấy refresh token từ body hoặc cookie
+            var refreshToken = dto?.RefreshToken;
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                refreshToken = Request.Cookies["refresh_token"];
+            }
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
             {
                 return BadRequest(new { Message = "Refresh token không hợp lệ" });
             }
 
-            var result = await _authService.RefreshTokenAsync(dto.RefreshToken);
+            var result = await _authService.RefreshTokenAsync(refreshToken);
 
             if (result == null)
             {
@@ -90,6 +106,7 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             }
 
             SetTokenCookie(result.Token);
+            SetRefreshTokenCookie(result.RefreshToken);
             return Ok(new
             {
                 Token = result.Token,
@@ -188,6 +205,21 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             };
 
             Response.Cookies.Append("jwt", token, cookieOptions);
+        }
+
+        private void SetRefreshTokenCookie(string? refreshToken)
+        {
+            if (string.IsNullOrEmpty(refreshToken)) return;
+
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,  // HttpOnly for security
+                Expires = DateTime.UtcNow.AddDays(7),  // Refresh token expires in 7 days
+                Secure = false,
+                SameSite = SameSiteMode.Lax
+            };
+
+            Response.Cookies.Append("refresh_token", refreshToken, cookieOptions);
         }
     }
 }

@@ -126,19 +126,33 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         }
 
         [HttpPut("playlist/{playlistId}")]
-        public async Task<IActionResult> UpdatePlaylist(Guid playlistId, [FromBody] dynamic data)
+        public async Task<IActionResult> UpdatePlaylist(Guid playlistId, [FromBody] UpdatePlaylistDto dto)
         {
             var userIdString = User.FindFirst("UserId")?.Value;
             if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
 
             var userId = Guid.Parse(userIdString);
-            string title = data.title;
-            var result = await _interactionService.UpdatePlaylistAsync(userId, playlistId, title);
+            var result = await _interactionService.UpdatePlaylistAsync(userId, playlistId, dto);
 
             if (!result.IsSuccess)
                 return result.ToActionResult();
 
             return Ok(new { Message = "Cập nhật playlist thành công", Data = result.Data });
+        }
+
+        [HttpPatch("playlist/{playlistId}/toggle-visibility")]
+        public async Task<IActionResult> TogglePlaylistVisibility(Guid playlistId)
+        {
+            var userIdString = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+            var userId = Guid.Parse(userIdString);
+            var result = await _interactionService.TogglePlaylistVisibilityAsync(userId, playlistId);
+
+            if (!result.IsSuccess)
+                return result.ToActionResult();
+
+            return Ok(new { IsPublic = result.Data.IsPublic, Message = result.Data.Message });
         }
 
         [HttpDelete("playlist/{playlistId}")]

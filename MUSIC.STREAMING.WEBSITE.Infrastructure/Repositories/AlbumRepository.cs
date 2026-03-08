@@ -31,7 +31,8 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
         // Join với Users để lấy tên Artist
         var sql = @"
             SELECT a.album_id as AlbumId, a.title, a.thumbnail, a.release_date as ReleaseDate, 
-                   a.created_at as CreatedAt, a.updated_at as UpdatedAt, u.full_name as ArtistName
+                   a.created_at as CreatedAt, a.updated_at as UpdatedAt,
+                   a.artist_id as ArtistId, u.full_name as ArtistName
             FROM albums a
             LEFT JOIN users u ON a.artist_id = u.user_id
             WHERE a.title LIKE @Keyword OR @Keyword = ''
@@ -70,7 +71,8 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
 
         var sql = @"
             SELECT a.album_id as AlbumId, a.title, a.thumbnail, a.release_date as ReleaseDate, 
-                   a.created_at as CreatedAt, a.updated_at as UpdatedAt, u.full_name as ArtistName
+                   a.created_at as CreatedAt, a.updated_at as UpdatedAt,
+                   a.artist_id as ArtistId, u.full_name as ArtistName
             FROM albums a
             LEFT JOIN users u ON a.artist_id = u.user_id
             WHERE a.artist_id = @UserId 
@@ -95,7 +97,8 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
         // Lấy thông tin album
         var albumSql = @"
             SELECT a.album_id as AlbumId, a.title, a.thumbnail, a.release_date as ReleaseDate,
-                   a.created_at as CreatedAt, a.updated_at as UpdatedAt, u.full_name as ArtistName
+                   a.created_at as CreatedAt, a.updated_at as UpdatedAt,
+                   a.artist_id as ArtistId, u.full_name as ArtistName
             FROM albums a
             LEFT JOIN users u ON a.artist_id = u.user_id
             WHERE a.album_id = @AlbumId";
@@ -112,12 +115,14 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
         var songsSql = @"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
                    s.created_at as CreatedAt, s.updated_at as UpdatedAt,
+                   s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
             FROM songs s
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id
+            LEFT JOIN albums al ON s.album_id = al.album_id
             WHERE s.album_id = @AlbumId
-            GROUP BY s.song_id
+            GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at, s.album_id, al.title
             ORDER BY s.created_at DESC
             LIMIT @Lim OFFSET @Off";
 
@@ -148,6 +153,23 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
         var sql = "SELECT COUNT(1) FROM albums WHERE album_id = @AlbumId AND artist_id = @UserId";
         var count = await _connection.ExecuteScalarAsync<int>(sql, new { AlbumId = albumId, UserId = userId });
         return count > 0;
+    }
+
+    public async Task<List<AlbumDto>> GetAlbumsByIdsAsync(List<Guid> albumIds)
+    {
+        if (albumIds == null || !albumIds.Any()) return new List<AlbumDto>();
+
+        var sql = @"
+            SELECT a.album_id as AlbumId, a.title, a.thumbnail, a.release_date as ReleaseDate,
+                   a.created_at as CreatedAt, a.updated_at as UpdatedAt,
+                   a.artist_id as ArtistId, u.full_name as ArtistName
+            FROM albums a
+            LEFT JOIN users u ON a.artist_id = u.user_id
+            WHERE a.album_id IN @AlbumIds
+            ORDER BY a.created_at DESC";
+
+        var data = await _connection.QueryAsync<AlbumDto>(sql, new { AlbumIds = albumIds });
+        return data.AsList();
     }
 }
 

@@ -84,13 +84,16 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         p.Add("Lim", pageSize);
 
         var sql = $@"
-            SELECT s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at,
+            SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   s.created_at as CreatedAt, s.updated_at as UpdatedAt,
+                   s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
             FROM songs s
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id
+            LEFT JOIN albums al ON s.album_id = al.album_id
             {whereSql}
-            GROUP BY s.song_id
+            GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at, s.album_id, al.title
             ORDER BY s.created_at DESC
             LIMIT @Lim OFFSET @Off";
 
@@ -125,14 +128,17 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         p.Add("Lim", pageSize);
 
         var sql = $@"
-            SELECT s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at,
+            SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   s.created_at as CreatedAt, s.updated_at as UpdatedAt,
+                   s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
             FROM songs s
             JOIN song_artists sa_check ON s.song_id = sa_check.song_id
             LEFT JOIN song_artists sa_all ON s.song_id = sa_all.song_id
             LEFT JOIN users u ON sa_all.artist_id = u.user_id
+            LEFT JOIN albums al ON s.album_id = al.album_id
             WHERE sa_check.artist_id = @ArtistId AND s.is_public = 1
-            GROUP BY s.song_id
+            GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at, s.album_id, al.title
             ORDER BY s.created_at DESC
             LIMIT @Lim OFFSET @Off";
 
@@ -177,13 +183,15 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
 
         var sql = $@"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration, s.created_at, s.updated_at,
+                   s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
             FROM songs s
             JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id
+            LEFT JOIN albums al ON s.album_id = al.album_id
             WHERE sa.artist_id = @UserId 
             AND (s.title LIKE @Keyword OR @Keyword = '')
-            GROUP BY s.song_id
+            GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at, s.album_id, al.title
             ORDER BY s.created_at DESC
             LIMIT @Lim OFFSET @Off";
 
@@ -214,6 +222,27 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
     {
         var sql = "DELETE FROM song_genres WHERE song_id = @SongId";
         await _connection.ExecuteAsync(sql, new { SongId = songId });
+    }
+
+    public async Task<List<SongDto>> GetSongsByIdsAsync(List<Guid> songIds)
+    {
+        if (songIds == null || !songIds.Any()) return new List<SongDto>();
+
+        var sql = @"
+            SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   s.created_at as CreatedAt, s.updated_at as UpdatedAt,
+                   s.album_id as AlbumId, al.title as AlbumTitle,
+                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+            FROM songs s
+            LEFT JOIN song_artists sa ON s.song_id = sa.song_id
+            LEFT JOIN users u ON sa.artist_id = u.user_id
+            LEFT JOIN albums al ON s.album_id = al.album_id
+            WHERE s.song_id IN @SongIds AND s.is_public = 1
+            GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at, s.album_id, al.title
+            ORDER BY s.created_at DESC";
+
+        var data = await _connection.QueryAsync<SongDto>(sql, new { SongIds = songIds });
+        return data.AsList();
     }
 }
 

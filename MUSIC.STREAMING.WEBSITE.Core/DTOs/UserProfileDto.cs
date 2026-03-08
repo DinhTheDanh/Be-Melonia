@@ -14,7 +14,11 @@ public class UserProfileDto
 
     public string? Avatar { get; set; }
 
+    public string? Banner { get; set; }
+
     public string? Bio { get; set; }
+
+    public string? ArtistType { get; set; }
 
     public string? Role { get; set; }
 

@@ -30,7 +30,7 @@ public class InteractionRepository : IInteractionRepository
         }
     }
 
-    public async Task<PagingResult<Song>> GetLikedSongsAsync(Guid userId, int pageIndex, int pageSize)
+    public async Task<PagingResult<SongDto>> GetLikedSongsAsync(Guid userId, int pageIndex, int pageSize)
     {
         var parameters = new DynamicParameters();
         parameters.Add("UserId", userId);
@@ -46,20 +46,30 @@ public class InteractionRepository : IInteractionRepository
 
         // 3. Query dữ liệu có LIMIT OFFSET
         var dataSql = @"
-        SELECT s.* FROM songs s 
-        JOIN user_likes ul ON s.song_id = ul.song_id 
+        SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+               s.created_at as CreatedAt, s.updated_at as UpdatedAt,
+               s.is_public as IsPublic, s.lyrics, s.file_hash as FileHash,
+               s.album_id as AlbumId, al.title as AlbumTitle,
+               GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+        FROM songs s 
+        JOIN user_likes ul ON s.song_id = ul.song_id
+        LEFT JOIN song_artists sa ON s.song_id = sa.song_id
+        LEFT JOIN users u ON sa.artist_id = u.user_id
+        LEFT JOIN albums al ON s.album_id = al.album_id
         WHERE ul.user_id = @UserId 
+        GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at,
+                 s.is_public, s.lyrics, s.file_hash, s.album_id, al.title, ul.liked_at
         ORDER BY ul.liked_at DESC
         LIMIT @Limit OFFSET @Offset";
 
-        var items = await _connection.QueryAsync<Song>(dataSql, parameters);
+        var items = await _connection.QueryAsync<SongDto>(dataSql, parameters);
 
         // 4. Tính toán trả về
         int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
         int fromRecord = totalRecords == 0 ? 0 : offset + 1;
         int toRecord = totalRecords == 0 ? 0 : Math.Min(pageIndex * pageSize, totalRecords);
 
-        return new PagingResult<Song>
+        return new PagingResult<SongDto>
         {
             Data = items,
             TotalRecords = totalRecords,
@@ -185,7 +195,8 @@ public class InteractionRepository : IInteractionRepository
 
         // Lấy thông tin playlist
         var playlistSql = @"
-            SELECT p.playlist_id as PlaylistId, p.title, p.created_at as CreatedAt,
+            SELECT p.playlist_id as PlaylistId, p.title, p.thumbnail, p.description,
+                   p.created_at as CreatedAt,
                    u.full_name as CreatedBy, u.user_id as CreatedById
             FROM playlists p
             LEFT JOIN users u ON p.user_id = u.user_id
@@ -205,14 +216,17 @@ public class InteractionRepository : IInteractionRepository
 
         var songsSql = @"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
-                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+                   s.album_id as AlbumId, al.title as AlbumTitle,
+                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames,
+                   MAX(ps.added_at) as AddedAt
             FROM songs s
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id
+            LEFT JOIN albums al ON s.album_id = al.album_id
             LEFT JOIN playlist_songs ps ON s.song_id = ps.song_id AND ps.playlist_id = @PlaylistId
             WHERE ps.playlist_id = @PlaylistId
-            GROUP BY s.song_id
-            ORDER BY ps.added_at DESC
+            GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.album_id, al.title
+            ORDER BY AddedAt DESC
             LIMIT @Limit OFFSET @Offset";
 
         var songs = await _connection.QueryAsync<SongDto>(songsSql, p);

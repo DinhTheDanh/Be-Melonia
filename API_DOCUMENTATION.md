@@ -93,10 +93,10 @@ http://localhost:5111/api/v1
 │  1. User đăng nhập (login/google-login)                         │
 │     ↓                                                           │
 │  2. Server trả về:                                              │
-│     • Access Token (trong response body) - hết hạn sau 60 phút  │
+│     • Access Token (trong Cookie jwt) - hết hạn sau 60 phút     │
 │     • Refresh Token (trong HTTP-Only Cookie) - hết hạn sau 7 ngày│
 │     ↓                                                           │
-│  3. FE lưu Access Token, Cookie tự động lưu Refresh Token       │
+│  3. Cookie tự động lưu cả Access Token và Refresh Token         │
 │     ↓                                                           │
 │  4. Khi Access Token hết hạn (nhận 401):                        │
 │     → Gọi /Auth/refresh-token (Cookie tự động gửi kèm)          │
@@ -113,10 +113,12 @@ POST /Auth/login
 Content-Type: application/json
 
 {
-  "Email": "user@example.com",
+  "Identifier": "user@example.com",
   "Password": "password123"
 }
 ```
+
+> `Identifier` có thể là **Email** hoặc **Username**
 
 **Response (200 OK):**
 
@@ -124,14 +126,18 @@ Content-Type: application/json
 {
   "Token": "eyJhbGciOiJIUzI1NiIs...",
   "RefreshToken": "abc123def456...",
-  "Expiration": "2026-02-08T11:00:00Z"
+  "FullName": "Nguyễn Văn A",
+  "Avatar": "https://ui-avatars.com/api/?name=Nguyen+Van+A&background=random&color=fff&size=128&bold=true",
+  "Role": "Artist",
+  "IsNewUser": false
 }
 ```
 
 **Cookies được set:**
 
 ```
-Set-Cookie: refreshToken=abc123...; HttpOnly; Secure; SameSite=Strict; Path=/; Expires=...
+Set-Cookie: jwt=eyJhbGciOi...; Path=/; Expires=...
+Set-Cookie: refresh_token=abc123...; HttpOnly; Path=/; Expires=... (7 ngày)
 ```
 
 ---
@@ -147,7 +153,19 @@ Content-Type: application/json
 }
 ```
 
-**Response:** Giống Login
+**Response (200 OK):**
+
+```json
+{
+  "FullName": "Nguyễn Văn A",
+  "Avatar": "https://lh3.googleusercontent.com/...",
+  "Role": "User",
+  "IsNewUser": true
+}
+```
+
+> **Lưu ý:** Google Login **không trả Token trong body** mà chỉ set vào Cookie (`jwt` và `refresh_token`).
+> `IsNewUser = true` khi user lần đầu đăng nhập bằng Google (tự tạo tài khoản).
 
 ---
 
@@ -158,11 +176,29 @@ POST /Auth/register
 Content-Type: application/json
 
 {
+  "Username": "nguyenvana",
   "Email": "user@example.com",
   "Password": "password123",
-  "FullName": "Nguyễn Văn A"
+  "FullName": "Nguyễn Văn A",
+  "Avatar": "https://... (optional)",
+  "FavoriteGenreIds": ["genre-guid-1", "genre-guid-2"]
 }
 ```
+
+**Response (200 OK):**
+
+```json
+{
+  "Token": "eyJhbGciOiJIUzI1NiIs...",
+  "RefreshToken": "abc123def456...",
+  "FullName": "Nguyễn Văn A",
+  "Avatar": "https://ui-avatars.com/api/?name=Nguyen+Van+A&background=random&color=fff&size=128&bold=true",
+  "Role": "User",
+  "IsNewUser": true
+}
+```
+
+> Avatar tự tạo từ UI Avatars nếu không truyền. Cookie `jwt` được set tự động.
 
 ---
 
@@ -175,7 +211,7 @@ POST /Auth/refresh-token
 **Note:**
 
 - Không cần body
-- Refresh token được gửi tự động qua Cookie
+- Refresh token được gửi tự động qua Cookie `refresh_token`
 - FE chỉ cần gọi khi nhận lỗi 401 (Access Token hết hạn)
 - Server kiểm tra blacklist Redis trước khi xử lý
 
@@ -184,10 +220,11 @@ POST /Auth/refresh-token
 ```json
 {
   "Token": "eyJhbGciOiJIUzI1NiIs...",
-  "RefreshToken": "newRefreshToken...",
-  "Expiration": "2026-02-08T12:00:00Z"
+  "RefreshToken": "newRefreshToken..."
 }
 ```
+
+> Cả 2 cookie (`jwt` và `refresh_token`) đều được cập nhật mới.
 
 ---
 
@@ -197,11 +234,67 @@ POST /Auth/refresh-token
 POST /Auth/logout
 ```
 
-**Note:** Xóa refresh token khỏi database, blacklist token trong Redis (7 ngày), và xóa cookie
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Đăng xuất thành công"
+}
+```
+
+> Xóa refresh token khỏi database, blacklist token trong Redis (7 ngày), xóa cookie `jwt` và `refresh_token`.
 
 ---
 
-### 6. Forgot Password
+### 6. Set User Role ✅
+
+```
+POST /Auth/set-role
+Content-Type: application/json
+
+{
+  "Role": "Artist"
+}
+```
+
+> `Role` chấp nhận: `"User"` hoặc `"Artist"`
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Cập nhật vai trò thành công"
+}
+```
+
+> Cookie `jwt` được cập nhật với token mới chứa Role mới.
+
+---
+
+### 7. Change Password ✅
+
+```
+PUT /Auth/change-password
+Content-Type: application/json
+
+{
+  "CurrentPassword": "oldpassword123",
+  "NewPassword": "newpassword123",
+  "ConfirmPassword": "newpassword123"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Đổi mật khẩu thành công. Email thông báo đã được gửi."
+}
+```
+
+---
+
+### 8. Forgot Password
 
 ```
 POST /Auth/forgot-password
@@ -212,11 +305,19 @@ Content-Type: application/json
 }
 ```
 
-**Note:** Gửi email chứa link reset password. Token được lưu trong Redis với TTL 15 phút.
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Gửi Email thành công!!"
+}
+```
+
+> Gửi email chứa link reset password. Token được lưu trong Redis với TTL 15 phút.
 
 ---
 
-### 7. Reset Password
+### 9. Reset Password
 
 ```
 POST /Auth/reset-password
@@ -228,13 +329,232 @@ Content-Type: application/json
 }
 ```
 
-**Note:** Xác minh token từ Redis, sau khi reset thành công token sẽ bị xóa.
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập."
+}
+```
+
+---
+
+## 👤 USER ENDPOINTS
+
+### 10. Get Profile ✅
+
+```
+GET /User/profile
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "UserId": "514685e6-5141-40c6-84c6-37c43da959aa",
+  "Username": "dinhthedanh",
+  "Email": "danh@example.com",
+  "FullName": "Dinh The Danh",
+  "Avatar": "https://ui-avatars.com/api/?name=Dinh+The+Danh&background=random&color=fff&size=128&bold=true",
+  "Banner": "https://res.cloudinary.com/.../banner.jpg",
+  "Bio": "Mô tả về bản thân",
+  "ArtistType": "Singer",
+  "Role": "Artist"
+}
+```
+
+---
+
+### 11. Update Profile ✅
+
+```
+PUT /User/profile
+Content-Type: application/json
+
+{
+  "FullName": "Dinh The Danh",
+  "Bio": "Mô tả mới",
+  "Avatar": "https://...",
+  "Banner": "https://...",
+  "ArtistType": "Singer"
+}
+```
+
+> `FullName` là required, còn lại optional.
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Cập nhật hồ sơ thành công!"
+}
+```
+
+---
+
+### 12. Update Interests ✅
+
+```
+POST /User/update-interests
+Content-Type: application/json
+
+["genre-guid-1", "genre-guid-2", "genre-guid-3"]
+```
+
+> Body là mảng Guid của các genre yêu thích.
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Cập nhật sở thích thành công!"
+}
+```
+
+---
+
+## 🎤 ARTIST ENDPOINTS
+
+### 13. Get Artists (Search)
+
+```
+GET /Artist?keyword=&pageIndex=1&pageSize=10
+```
+
+**Params:**
+
+- `keyword` (string, optional) - Tìm kiếm theo tên nghệ sĩ
+- `pageIndex` (int) - Trang (mặc định 1)
+- `pageSize` (int) - Số bản ghi/trang (mặc định 10)
+
+**Response:** PagingResult\<ArtistDto\>
+
+```json
+{
+  "Data": [
+    {
+      "UserId": "514685e6-5141-40c6-84c6-37c43da959aa",
+      "FullName": "Dinh The Danh",
+      "Avatar": "https://ui-avatars.com/api/?name=Dinh+The+Danh&...",
+      "Banner": "https://res.cloudinary.com/.../banner.jpg",
+      "Bio": "Ca sĩ, nhạc sĩ",
+      "ArtistType": "Singer"
+    }
+  ],
+  "TotalRecords": 15,
+  "TotalPages": 2,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
+
+---
+
+### 14. Get Songs by Artist
+
+```
+GET /Artist/{artistId}/songs?pageIndex=1&pageSize=10
+```
+
+**Params:**
+
+- `artistId` (Guid) - ID nghệ sĩ
+- `pageIndex` (int)
+- `pageSize` (int)
+
+**Response:** PagingResult\<SongDto\>
+
+```json
+{
+  "Data": [
+    {
+      "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+      "Title": "Người Ấy",
+      "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+      "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+      "Duration": 261,
+      "AlbumId": "1ef6127f-1415-4bb2-ac51-2e7a75cd9689",
+      "AlbumTitle": "abc",
+      "ArtistNames": "Dinh The Danh",
+      "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
+      "CreatedAt": "2026-01-27T00:07:34",
+      "UpdatedAt": "2026-03-01T15:25:19"
+    }
+  ],
+  "TotalRecords": 8,
+  "TotalPages": 1,
+  "FromRecord": 1,
+  "ToRecord": 8
+}
+```
+
+---
+
+## 📁 FILE ENDPOINTS
+
+### 15. Upload Image
+
+```
+POST /File/upload-image
+Content-Type: multipart/form-data
+
+file: [binary image file]
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "Url": "https://res.cloudinary.com/xxx/image/upload/v123/music-streaming/image.webp"
+}
+```
+
+---
+
+### 16. Upload Audio
+
+```
+POST /File/upload-audio
+Content-Type: multipart/form-data
+
+file: [binary audio file]
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "Url": "https://res.cloudinary.com/xxx/video/upload/v123/music-streaming/songs/audio.mp3"
+}
+```
+
+---
+
+### 17. Get Cloudinary Signature (Client-side Upload)
+
+```
+GET /File/signature
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "CloudName": "your-cloud-name",
+  "ApiKey": "123456789",
+  "Timestamp": 1709654400,
+  "Signature": "a1b2c3d4e5f6...",
+  "Folder": "music-streaming/songs"
+}
+```
+
+> Dùng cho FE upload trực tiếp lên Cloudinary (không qua server). Gửi kèm `Signature`, `Timestamp`, `ApiKey` trong form data lên Cloudinary.
 
 ---
 
 ## 🎵 MUSIC ENDPOINTS
 
-### 1. Get All Songs (Search)
+### 18. Get All Songs (Search)
 
 ```
 GET /Music/songs?keyword=&pageIndex=1&pageSize=10
@@ -248,9 +568,33 @@ GET /Music/songs?keyword=&pageIndex=1&pageSize=10
 
 **Response:** PagingResult\<SongDto\>
 
+```json
+{
+  "Data": [
+    {
+      "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+      "Title": "Người Ấy",
+      "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+      "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+      "Duration": 261,
+      "AlbumId": "1ef6127f-1415-4bb2-ac51-2e7a75cd9689",
+      "AlbumTitle": "abc",
+      "ArtistNames": "Dinh The Danh",
+      "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
+      "CreatedAt": "2026-01-27T00:07:34",
+      "UpdatedAt": "2026-03-01T15:25:19"
+    }
+  ],
+  "TotalRecords": 50,
+  "TotalPages": 5,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
+
 ---
 
-### 2. Get My Songs (Authorized) ✅
+### 19. Get My Songs ✅
 
 ```
 GET /Music/my-songs?keyword=&pageIndex=1&pageSize=10
@@ -258,11 +602,11 @@ GET /Music/my-songs?keyword=&pageIndex=1&pageSize=10
 
 **Params:** Giống Get All Songs
 
-**Response:** PagingResult\<SongDto\> của chính mình
+**Response:** PagingResult\<SongDto\> — cấu trúc giống Get All Songs, chỉ lọc bài hát của user hiện tại.
 
 ---
 
-### 3. Create Song ✅
+### 20. Create Song ✅
 
 ```
 POST /Music/song
@@ -270,19 +614,40 @@ Content-Type: application/json
 
 {
   "Title": "Bài hát mới",
+  "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+  "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
   "AlbumId": "guid-or-null",
-  "FileUrl": "https://...",
+  "Thumbnail": "https://... (optional, tự tạo nếu null)",
   "Duration": 180,
-  "Lyrics": "...",
-  "FileHash": "hash",
-  "Thumbnail": "https://...",
-  "ArtistIds": ["guid1", "guid2"]
+  "GenreIds": ["genre-guid-1", "genre-guid-2"],
+  "Lyrics": "Lời bài hát... (optional)",
+  "FileHash": "4a0dcd618452d123fab76723c54ae035 (optional)"
 }
 ```
 
+**Response (200 OK):** Song entity
+
+```json
+{
+  "SongId": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+  "Title": "Bài hát mới",
+  "AlbumId": null,
+  "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+  "Thumbnail": "https://api.dicebear.com/7.x/shapes/svg?seed=...",
+  "Duration": 180,
+  "Lyrics": "Lời bài hát...",
+  "IsPublic": true,
+  "CreatedAt": "2026-03-07T10:00:00",
+  "UpdatedAt": null,
+  "FileHash": "4a0dcd618452d123fab76723c54ae035"
+}
+```
+
+> **Lưu ý:** Response trả về **Song entity** (có `SongId`), KHÔNG phải SongDto. Nếu không truyền Thumbnail, server tự tạo DiceBear avatar.
+
 ---
 
-### 4. Update Song ✅
+### 21. Update Song ✅
 
 ```
 PUT /Music/song/{songId}
@@ -292,35 +657,73 @@ Content-Type: application/json
   "Title": "Tên bài hát mới",
   "Thumbnail": "https://...",
   "Lyrics": "Lời bài hát...",
+  "IsPublic": true,
+  "AlbumId": "guid | null",
   "GenreIds": ["guid1", "guid2"]
 }
 ```
 
-**Params:**
+> Tất cả fields đều **optional**. Chỉ chủ sở hữu bài hát mới có thể chỉnh sửa.
 
-- `songId` (Guid) - ID bài hát cần chỉnh sửa
+**Response (200 OK):**
 
-**Note:** Chỉ chủ sở hữu bài hát mới có thể chỉnh sửa. Tất cả fields đều optional.
+```json
+{
+  "Message": "Cập nhật bài hát thành công"
+}
+```
 
 ---
 
-### 5. Delete Song ✅
+### 22. Delete Song ✅
 
 ```
 DELETE /Music/song/{songId}
 ```
 
-**Params:**
+**Response (200 OK):**
 
-- `songId` (Guid) - ID bài hát cần xóa
+```json
+{
+  "Message": "Xóa bài hát thành công"
+}
+```
 
-**Note:** Chỉ chủ sở hữu bài hát mới có thể xóa
+> Chỉ chủ sở hữu bài hát mới có thể xóa.
+
+---
+
+### 23. Check File Hash
+
+```
+GET /Music/check-hash/{hash}
+```
+
+> Kiểm tra file nhạc đã tồn tại chưa (tránh upload trùng).
+
+**Response — File đã tồn tại:**
+
+```json
+{
+  "Exists": true,
+  "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+  "Duration": 261
+}
+```
+
+**Response — File chưa tồn tại:**
+
+```json
+{
+  "Exists": false
+}
+```
 
 ---
 
 ## 📀 ALBUM ENDPOINTS
 
-### 6. Get All Albums (Search)
+### 24. Get All Albums (Search)
 
 ```
 GET /Music/albums?keyword=&pageIndex=1&pageSize=10
@@ -334,9 +737,30 @@ GET /Music/albums?keyword=&pageIndex=1&pageSize=10
 
 **Response:** PagingResult\<AlbumDto\>
 
+```json
+{
+  "Data": [
+    {
+      "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
+      "Title": "bcd",
+      "Thumbnail": "https://res.cloudinary.com/.../album.webp",
+      "ArtistId": "514685e6-5141-40c6-84c6-37c43da959aa",
+      "ArtistName": "Dinh The Danh",
+      "ReleaseDate": "2026-02-07T22:01:48",
+      "CreatedAt": "2026-02-07T22:01:48",
+      "UpdatedAt": null
+    }
+  ],
+  "TotalRecords": 10,
+  "TotalPages": 1,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
+
 ---
 
-### 7. Get My Albums (Authorized) ✅
+### 25. Get My Albums ✅
 
 ```
 GET /Music/my-albums?keyword=&pageIndex=1&pageSize=10
@@ -344,11 +768,11 @@ GET /Music/my-albums?keyword=&pageIndex=1&pageSize=10
 
 **Params:** Giống Get All Albums
 
-**Response:** PagingResult\<AlbumDto\> của chính mình
+**Response:** PagingResult\<AlbumDto\> — cấu trúc giống Get All Albums, chỉ lọc album của user hiện tại.
 
 ---
 
-### 8. Create Album ✅
+### 26. Create Album ✅
 
 ```
 POST /Music/album
@@ -356,14 +780,29 @@ Content-Type: application/json
 
 {
   "Title": "Album mới",
-  "Thumbnail": "https://...",
-  "ReleaseDate": "2026-01-30"
+  "Thumbnail": "https://... (optional, tự tạo nếu null)"
 }
 ```
 
+**Response (200 OK):** Album entity
+
+```json
+{
+  "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
+  "Title": "Album mới",
+  "ArtistId": "514685e6-5141-40c6-84c6-37c43da959aa",
+  "Thumbnail": "https://api.dicebear.com/7.x/shapes/svg?seed=...",
+  "ReleaseDate": "2026-03-07T10:00:00",
+  "CreatedAt": "2026-03-07T10:00:00",
+  "UpdatedAt": null
+}
+```
+
+> Nếu không truyền Thumbnail, server tự tạo DiceBear avatar.
+
 ---
 
-### 9. Update Album ✅
+### 27. Update Album ✅
 
 ```
 PUT /Music/album/{albumId}
@@ -376,29 +815,37 @@ Content-Type: application/json
 }
 ```
 
-**Params:**
+> `Title` required, `Thumbnail` và `ReleaseDate` optional. Chỉ chủ sở hữu mới được sửa.
 
-- `albumId` (Guid) - ID album cần chỉnh sửa
+**Response (200 OK):**
 
-**Note:** Chỉ chủ sở hữu album mới có thể chỉnh sửa. Tất cả fields đều optional.
+```json
+{
+  "Message": "Cập nhật album thành công"
+}
+```
 
 ---
 
-### 10. Delete Album ✅
+### 28. Delete Album ✅
 
 ```
 DELETE /Music/album/{albumId}
 ```
 
-**Params:**
+**Response (200 OK):**
 
-- `albumId` (Guid) - ID album cần xóa
+```json
+{
+  "Message": "Xóa album thành công"
+}
+```
 
-**Note:** Chỉ chủ sở hữu album mới có thể xóa
+> Chỉ chủ sở hữu album mới có thể xóa.
 
 ---
 
-### 11. Get Album Details (Xem chi tiết album + bài hát)
+### 29. Get Album Details
 
 ```
 GET /Music/album/{albumId}?pageIndex=1&pageSize=10
@@ -410,68 +857,93 @@ GET /Music/album/{albumId}?pageIndex=1&pageSize=10
 - `pageIndex` (int) - Trang danh sách bài hát (mặc định 1)
 - `pageSize` (int) - Số bài hát/trang (mặc định 10)
 
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
   "Album": {
-    "AlbumId": "guid",
-    "Title": "Tên album",
-    "Thumbnail": "https://...",
-    "ReleaseDate": "2026-01-30",
-    "ArtistId": "guid",
-    "ArtistName": "Tên nghệ sĩ",
-    "CreatedAt": "2026-01-30T10:00:00",
-    "UpdatedAt": "2026-01-30T15:00:00"
+    "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
+    "Title": "bcd",
+    "Thumbnail": "https://res.cloudinary.com/.../album.webp",
+    "ArtistId": "514685e6-5141-40c6-84c6-37c43da959aa",
+    "ArtistName": "Dinh The Danh",
+    "ReleaseDate": "2026-02-07T22:01:48",
+    "CreatedAt": "2026-02-07T22:01:48",
+    "UpdatedAt": null
   },
   "Songs": {
-    "Items": [...],
-    "PageIndex": 1,
-    "PageSize": 10,
+    "Data": [
+      {
+        "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+        "Title": "Người Ấy",
+        "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+        "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+        "Duration": 261,
+        "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
+        "AlbumTitle": "bcd",
+        "ArtistNames": "Dinh The Danh",
+        "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
+        "CreatedAt": "2026-01-27T00:07:34",
+        "UpdatedAt": null
+      }
+    ],
     "TotalRecords": 5,
-    "TotalPages": 1
+    "TotalPages": 1,
+    "FromRecord": 1,
+    "ToRecord": 5
   }
+}
+```
+
+**Response (404):**
+
+```json
+{
+  "Message": "Album không tồn tại"
 }
 ```
 
 ---
 
-### 12. Add Song to Album ✅
+### 30. Add Song to Album ✅
 
 ```
 POST /Music/album/{albumId}/add-song/{songId}
 ```
 
-**Params:**
+**Response (200 OK):**
 
-- `albumId` (Guid) - ID album
-- `songId` (Guid) - ID bài hát cần thêm
+```json
+{
+  "Message": "Thêm bài hát vào album thành công"
+}
+```
 
-**Note:**
-
-- Chỉ chủ sở hữu album VÀ bài hát mới có thể thực hiện
-- Bài hát sẽ được gắn vào album (cập nhật album_id)
+> Chỉ chủ sở hữu album VÀ bài hát mới có thể thực hiện. Bài hát sẽ được gắn `album_id`.
 
 ---
 
-### 13. Remove Song from Album ✅
+### 31. Remove Song from Album ✅
 
 ```
 DELETE /Interaction/album/{albumId}/remove-song/{songId}
 ```
 
-**Params:**
+**Response (200 OK):**
 
-- `albumId` (Guid) - ID album
-- `songId` (Guid) - ID bài hát cần xóa khỏi album
+```json
+{
+  "Message": "Đã xóa bài hát khỏi album thành công"
+}
+```
 
-**Note:** Chỉ chủ sở hữu album mới có thể xóa bài hát khỏi album
+> Chỉ chủ sở hữu album mới có thể xóa bài hát khỏi album.
 
 ---
 
 ## 📋 PLAYLIST ENDPOINTS
 
-### 14. Get All Playlists (Search)
+### 32. Get All Playlists (Search)
 
 ```
 GET /Music/playlists?keyword=&pageIndex=1&pageSize=10
@@ -485,9 +957,30 @@ GET /Music/playlists?keyword=&pageIndex=1&pageSize=10
 
 **Response:** PagingResult\<PlaylistDto\>
 
+```json
+{
+  "Data": [
+    {
+      "PlaylistId": "8129dfc2-221a-4e09-9ca1-cff1f71e27cd",
+      "Title": "Danh sách phát của tôi #1",
+      "Thumbnail": "https://res.cloudinary.com/.../playlist.jpg",
+      "Description": "Mô tả playlist",
+      "CreatedBy": "Dinh The Danh",
+      "CreatedAt": "2026-02-24T21:46:13",
+      "UpdatedAt": "2026-03-01T16:43:20",
+      "SongCount": 5
+    }
+  ],
+  "TotalRecords": 3,
+  "TotalPages": 1,
+  "FromRecord": 1,
+  "ToRecord": 3
+}
+```
+
 ---
 
-### 15. Get My Playlists (Authorized) ✅
+### 33. Get My Playlists ✅
 
 ```
 GET /Music/my-playlists?keyword=&pageIndex=1&pageSize=10
@@ -495,11 +988,11 @@ GET /Music/my-playlists?keyword=&pageIndex=1&pageSize=10
 
 **Params:** Giống Get All Playlists
 
-**Response:** PagingResult\<PlaylistDto\> của chính mình
+**Response:** PagingResult\<PlaylistDto\> — cấu trúc giống Get All Playlists, chỉ lọc playlist của user hiện tại.
 
 ---
 
-### 16. Create Playlist ✅
+### 34. Create Playlist ✅
 
 ```
 POST /Interaction/playlist
@@ -507,13 +1000,29 @@ Content-Type: application/json
 
 {
   "Title": "Playlist mới",
-  "Description": "Mô tả (optional)"
+  "Thumbnail": "https://... (optional)",
+  "IsPublic": true
+}
+```
+
+**Response (200 OK):** Playlist entity
+
+```json
+{
+  "PlaylistId": "8129dfc2-221a-4e09-9ca1-cff1f71e27cd",
+  "Title": "Playlist mới",
+  "UserId": "514685e6-5141-40c6-84c6-37c43da959aa",
+  "Thumbnail": null,
+  "Description": null,
+  "IsPublic": true,
+  "CreatedAt": "2026-03-07T10:00:00",
+  "UpdatedAt": null
 }
 ```
 
 ---
 
-### 17. Get Playlist Details ✅
+### 35. Get Playlist Details ✅
 
 ```
 GET /Interaction/playlist/{playlistId}?pageIndex=1&pageSize=10
@@ -525,18 +1034,35 @@ GET /Interaction/playlist/{playlistId}?pageIndex=1&pageSize=10
 - `pageIndex` (int)
 - `pageSize` (int)
 
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
   "Playlist": {
-    "PlaylistId": "guid",
-    "Title": "...",
-    "CreatedAt": "2026-01-30",
-    "CreatedBy": "Tên người dùng"
+    "PlaylistId": "8129dfc2-221a-4e09-9ca1-cff1f71e27cd",
+    "Title": "Danh sách phát của tôi #1",
+    "Thumbnail": "https://res.cloudinary.com/.../playlist.jpg",
+    "Description": "Mô tả playlist",
+    "CreatedAt": "2026-02-24T21:46:13",
+    "CreatedBy": "Dinh The Danh",
+    "CreatedById": "514685e6-5141-40c6-84c6-37c43da959aa"
   },
   "Songs": {
-    "Data": [...],
+    "Data": [
+      {
+        "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+        "Title": "Người Ấy",
+        "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+        "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+        "Duration": 261,
+        "AlbumId": "1ef6127f-1415-4bb2-ac51-2e7a75cd9689",
+        "AlbumTitle": "abc",
+        "ArtistNames": "Dinh The Danh",
+        "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
+        "CreatedAt": "2026-01-27T00:07:34",
+        "UpdatedAt": null
+      }
+    ],
     "TotalRecords": 10,
     "TotalPages": 1,
     "FromRecord": 1,
@@ -545,72 +1071,157 @@ GET /Interaction/playlist/{playlistId}?pageIndex=1&pageSize=10
 }
 ```
 
+**Response (404):**
+
+```json
+{
+  "Message": "Playlist không tồn tại"
+}
+```
+
 ---
 
-### 18. Update Playlist ✅
+### 36. Update Playlist ✅
 
 ```
 PUT /Interaction/playlist/{playlistId}
 Content-Type: application/json
 
 {
-  "Title": "Tên playlist mới"
+  "Title": "Tên playlist mới",
+  "Thumbnail": "https://...",
+  "Description": "Mô tả playlist",
+  "IsPublic": false
+}
+```
+
+> `Title` required, `Thumbnail`, `Description` và `IsPublic` optional. Chỉ chủ sở hữu mới được sửa.
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Cập nhật playlist thành công",
+  "Data": {
+    "PlaylistId": "8129dfc2-221a-4e09-9ca1-cff1f71e27cd",
+    "Title": "Tên playlist mới",
+    "UserId": "514685e6-5141-40c6-84c6-37c43da959aa",
+    "Thumbnail": "https://...",
+    "Description": "Mô tả playlist",
+    "IsPublic": false,
+    "CreatedAt": "2026-02-24T21:46:13",
+    "UpdatedAt": "2026-03-07T10:00:00"
+  }
 }
 ```
 
 ---
 
-### 19. Delete Playlist ✅
+### 37. Toggle Playlist Visibility ✅
+
+```
+PATCH /Interaction/playlist/{playlistId}/toggle-visibility
+```
+
+> Chuyển đổi trạng thái công khai/riêng tư của playlist. Chỉ chủ sở hữu mới có quyền thay đổi.
+
+**Response (200 OK):**
+
+```json
+{
+  "IsPublic": false,
+  "Message": "Playlist đã được đặt thành riêng tư"
+}
+```
+
+hoặc:
+
+```json
+{
+  "IsPublic": true,
+  "Message": "Playlist đã được đặt thành công khai"
+}
+```
+
+**Response (403):**
+
+```json
+{
+  "Message": "Bạn không có quyền chỉnh sửa playlist này."
+}
+```
+
+**Response (404):**
+
+```json
+{
+  "Message": "Playlist không tồn tại."
+}
+```
+
+---
+
+### 38. Delete Playlist ✅
 
 ```
 DELETE /Interaction/playlist/{playlistId}
 ```
 
-**Note:** Chỉ chủ sở hữu playlist mới có thể xóa
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Đã xóa playlist thành công"
+}
+```
+
+> Chỉ chủ sở hữu playlist mới có thể xóa.
 
 ---
 
 ## 🎶 PLAYLIST SONG MANAGEMENT
 
-### 20. Add Song to Playlist ✅
+### 39. Add Song to Playlist ✅
 
 ```
 POST /Interaction/playlist/{playlistId}/add-song/{songId}
 ```
 
-**Params:**
+**Response (200 OK):**
 
-- `playlistId` (Guid) - ID playlist
-- `songId` (Guid) - ID bài hát
+```json
+{
+  "Message": "Thêm bài hát vào playlist thành công"
+}
+```
 
 ---
 
-### 21. Remove Song from Playlist ✅
+### 40. Remove Song from Playlist ✅
 
 ```
 DELETE /Interaction/playlist/{playlistId}/remove-song/{songId}
 ```
 
-**Params:**
+**Response (200 OK):**
 
-- `playlistId` (Guid)
-- `songId` (Guid)
+```json
+{
+  "Message": "Xóa bài hát khỏi playlist thành công"
+}
+```
 
 ---
 
 ## ❤️ LIKE ENDPOINTS
 
-### 22. Toggle Like Song ✅
+### 41. Toggle Like Song ✅
 
 ```
 POST /Interaction/like/{songId}
 ```
 
-**Params:**
-
-- `songId` (Guid) - ID bài hát
-
-**Response:**
+**Response (200 OK) — Thích:**
 
 ```json
 {
@@ -619,9 +1230,18 @@ POST /Interaction/like/{songId}
 }
 ```
 
+**Response (200 OK) — Bỏ thích:**
+
+```json
+{
+  "IsLiked": false,
+  "Message": "Đã bỏ thích bài hát"
+}
+```
+
 ---
 
-### 23. Get Liked Songs ✅
+### 42. Get Liked Songs ✅
 
 ```
 GET /Interaction/liked-songs?pageIndex=1&pageSize=10
@@ -632,23 +1252,43 @@ GET /Interaction/liked-songs?pageIndex=1&pageSize=10
 - `pageIndex` (int)
 - `pageSize` (int)
 
-**Response:** PagingResult\<Song\>
+**Response:** PagingResult\<SongDto\>
+
+```json
+{
+  "Data": [
+    {
+      "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+      "Title": "Người Ấy",
+      "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+      "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+      "Duration": 261,
+      "AlbumId": "1ef6127f-1415-4bb2-ac51-2e7a75cd9689",
+      "AlbumTitle": "abc",
+      "ArtistNames": "Dinh The Danh",
+      "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
+      "CreatedAt": "2026-01-27T00:07:34",
+      "UpdatedAt": "2026-03-01T15:25:19"
+    }
+  ],
+  "TotalRecords": 20,
+  "TotalPages": 2,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
 
 ---
 
 ## 👥 FOLLOW ENDPOINTS
 
-### 24. Toggle Follow User ✅
+### 43. Toggle Follow User ✅
 
 ```
 POST /Interaction/follow/{targetUserId}
 ```
 
-**Params:**
-
-- `targetUserId` (Guid) - ID người dùng cần theo dõi
-
-**Response:**
+**Response (200 OK) — Theo dõi:**
 
 ```json
 {
@@ -657,9 +1297,18 @@ POST /Interaction/follow/{targetUserId}
 }
 ```
 
+**Response (200 OK) — Bỏ theo dõi:**
+
+```json
+{
+  "IsFollowing": false,
+  "Message": "Đã bỏ theo dõi"
+}
+```
+
 ---
 
-### 25. Get Following List ✅
+### 44. Get Following List ✅
 
 ```
 GET /Interaction/followings?pageIndex=1&pageSize=10
@@ -672,21 +1321,57 @@ GET /Interaction/followings?pageIndex=1&pageSize=10
 
 **Response:** PagingResult\<ArtistDto\>
 
+```json
+{
+  "Data": [
+    {
+      "UserId": "514685e6-5141-40c6-84c6-37c43da959aa",
+      "FullName": "Dinh The Danh",
+      "Avatar": "https://ui-avatars.com/api/?name=Dinh+The+Danh&...",
+      "Banner": "https://res.cloudinary.com/.../banner.jpg",
+      "Bio": "Ca sĩ, nhạc sĩ",
+      "ArtistType": "Singer"
+    }
+  ],
+  "TotalRecords": 5,
+  "TotalPages": 1,
+  "FromRecord": 1,
+  "ToRecord": 5
+}
+```
+
 ---
 
 ## 🏷️ GENRE ENDPOINTS
 
-### 26. Get All Genres
+### 45. Get All Genres
 
 ```
 GET /Music/genres
 ```
 
-**Response:** IEnumerable\<GenreDto\>
+**Response (200 OK):** Array\<GenreDto\>
+
+```json
+[
+  {
+    "Id": "b1c2d3e4-5678-90ab-cdef-1234567890ab",
+    "Name": "Pop",
+    "ImageUrl": "https://res.cloudinary.com/.../pop.jpg"
+  },
+  {
+    "Id": "c2d3e4f5-6789-01bc-defa-2345678901bc",
+    "Name": "Rock",
+    "ImageUrl": "https://res.cloudinary.com/.../rock.jpg"
+  }
+]
+```
+
+> **Lưu ý:** Trả về mảng trực tiếp, KHÔNG wrap trong PagingResult.
 
 ---
 
-### 27. Create Genre ✅
+### 46. Create Genre ✅
 
 ```
 POST /Music/genre
@@ -695,6 +1380,19 @@ Content-Type: application/json
 {
   "Name": "Rock",
   "ImageUrl": "https://..."
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Tạo thể loại thành công",
+  "Data": {
+    "Id": "b1c2d3e4-5678-90ab-cdef-1234567890ab",
+    "Name": "Rock",
+    "ImageUrl": "https://..."
+  }
 }
 ```
 
@@ -738,7 +1436,7 @@ Content-Type: application/json
 
 ---
 
-### 28. Get Recommended Songs ✅
+### 47. Get Recommended Songs ✅
 
 ```
 GET /Recommendation/songs/{userId}?topN=20
@@ -749,6 +1447,15 @@ GET /Recommendation/songs/{userId}?topN=20
 - `userId` (Guid) - ID người dùng cần lấy đề xuất
 - `topN` (int, optional) - Số bài hát đề xuất tối đa (mặc định 20)
 
+**Thuật toán đề xuất dựa trên:**
+
+1. Bảng `user_song_stats`: Lấy top nghệ sĩ và thể loại mà user nghe nhiều nhất
+2. Lấy bài hát từ các nghệ sĩ + thể loại yêu thích
+3. Loại bỏ bài hát user đã nghe nhiều
+4. Cache kết quả trong Redis 10 phút
+
+> **FE cần:** Gửi `userId` hợp lệ (lấy từ JWT hoặc profile). Nếu user chưa có lịch sử nghe → trả về mảng rỗng.
+
 **Response (200 OK):**
 
 ```json
@@ -756,28 +1463,25 @@ GET /Recommendation/songs/{userId}?topN=20
   "Message": "Lấy danh sách bài hát đề xuất thành công",
   "Data": [
     {
-      "Id": "guid",
+      "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
       "Title": "Bài hát đề xuất",
-      "Thumbnail": "https://...",
-      "FileUrl": "https://...",
+      "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+      "FileUrl": "https://res.cloudinary.com/.../song.mp3",
       "Duration": 240,
+      "AlbumId": null,
+      "AlbumTitle": null,
       "ArtistNames": "Artist 1, Artist 2",
       "ArtistIds": ["guid1", "guid2"],
-      "CreatedAt": "2026-01-30T10:00:00"
+      "CreatedAt": "2026-01-30T10:00:00",
+      "UpdatedAt": null
     }
   ]
 }
 ```
 
-**Lưu ý:**
-
-- Kết quả được cache trong Redis 10 phút (key: `recommendation:songs:{userId}`)
-- Nếu user chưa có lịch sử nghe → trả về danh sách rỗng
-- Thuật toán: Lấy bài hát từ Top Artists + Top Genres yêu thích → loại bỏ bài đã nghe nhiều
-
 ---
 
-### 29. Get Recommended Albums ✅
+### 48. Get Recommended Albums ✅
 
 ```
 GET /Recommendation/albums/{userId}?topN=10
@@ -788,6 +1492,14 @@ GET /Recommendation/albums/{userId}?topN=10
 - `userId` (Guid) - ID người dùng cần lấy đề xuất
 - `topN` (int, optional) - Số album đề xuất tối đa (mặc định 10)
 
+**Thuật toán đề xuất dựa trên:**
+
+1. Bảng `user_song_stats`: Lấy top nghệ sĩ mà user nghe nhiều nhất
+2. Lấy album của các nghệ sĩ đó
+3. Cache kết quả trong Redis 10 phút
+
+> **FE cần:** Gửi `userId` hợp lệ. Nếu user chưa có lịch sử nghe → Data sẽ là mảng rỗng.
+
 **Response (200 OK):**
 
 ```json
@@ -795,21 +1507,18 @@ GET /Recommendation/albums/{userId}?topN=10
   "Message": "Lấy danh sách album đề xuất thành công",
   "Data": [
     {
-      "AlbumId": "guid",
+      "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
       "Title": "Album đề xuất",
-      "Thumbnail": "https://...",
-      "ReleaseDate": "2026-01-30",
-      "ArtistName": "Tên nghệ sĩ",
-      "CreatedAt": "2026-01-30T10:00:00"
+      "Thumbnail": "https://res.cloudinary.com/.../album.webp",
+      "ArtistId": "514685e6-5141-40c6-84c6-37c43da959aa",
+      "ArtistName": "Dinh The Danh",
+      "ReleaseDate": "2026-01-30T00:00:00",
+      "CreatedAt": "2026-01-30T10:00:00",
+      "UpdatedAt": null
     }
   ]
 }
 ```
-
-**Lưu ý:**
-
-- Kết quả được cache trong Redis 10 phút (key: `recommendation:albums:{userId}`)
-- Thuật toán: Lấy Top Artists yêu thích → lấy album của các artist đó
 
 ---
 
@@ -836,45 +1545,191 @@ GET /Recommendation/albums/{userId}?topN=10
 
 ```json
 {
-  "Id": "guid",
-  "Title": "Tên bài hát",
-  "Thumbnail": "https://...",
-  "FileUrl": "https://...",
-  "Duration": 180,
-  "ArtistNames": "Artist 1, Artist 2",
-  "ArtistIds": ["guid1", "guid2"],
-  "CreatedAt": "2026-01-30T10:00:00",
-  "UpdatedAt": "2026-01-31T15:30:00"
+  "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+  "Title": "Người Ấy",
+  "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+  "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+  "Duration": 261,
+  "AlbumId": "1ef6127f-1415-4bb2-ac51-2e7a75cd9689",
+  "AlbumTitle": "abc",
+  "ArtistNames": "Dinh The Danh",
+  "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
+  "CreatedAt": "2026-01-27T00:07:34",
+  "UpdatedAt": "2026-03-01T15:25:19"
 }
 ```
+
+| Field       | Type     | Nullable | Mô tả                                     |
+| ----------- | -------- | -------- | ----------------------------------------- |
+| Id          | Guid     | ❌       | ID bài hát                                |
+| Title       | string   | ❌       | Tên bài hát                               |
+| Thumbnail   | string   | ✅       | Ảnh bìa                                   |
+| FileUrl     | string   | ❌       | URL file nhạc (Cloudinary)                |
+| Duration    | int      | ❌       | Thời lượng (giây)                         |
+| AlbumId     | Guid     | ✅       | ID album chứa bài hát (null nếu không có) |
+| AlbumTitle  | string   | ✅       | Tên album (null nếu không có)             |
+| ArtistNames | string   | ✅       | Tên nghệ sĩ, phân cách bằng ", "          |
+| ArtistIds   | Guid[]   | ❌       | Danh sách ID nghệ sĩ                      |
+| CreatedAt   | DateTime | ❌       | Ngày tạo                                  |
+| UpdatedAt   | DateTime | ✅       | Ngày cập nhật                             |
 
 ### AlbumDto
 
 ```json
 {
-  "AlbumId": "guid",
-  "Title": "Tên album",
-  "Thumbnail": "https://...",
-  "ReleaseDate": "2026-01-30",
-  "ArtistName": "Tên nghệ sĩ",
-  "CreatedAt": "2026-01-30T10:00:00",
-  "UpdatedAt": "2026-01-31T15:30:00"
+  "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
+  "Title": "bcd",
+  "Thumbnail": "https://res.cloudinary.com/.../album.webp",
+  "ArtistId": "514685e6-5141-40c6-84c6-37c43da959aa",
+  "ArtistName": "Dinh The Danh",
+  "ReleaseDate": "2026-02-07T22:01:48",
+  "CreatedAt": "2026-02-07T22:01:48",
+  "UpdatedAt": null
 }
 ```
+
+| Field       | Type     | Nullable | Mô tả          |
+| ----------- | -------- | -------- | -------------- |
+| AlbumId     | Guid     | ❌       | ID album       |
+| Title       | string   | ❌       | Tên album      |
+| Thumbnail   | string   | ✅       | Ảnh bìa        |
+| ArtistId    | Guid     | ❌       | ID nghệ sĩ tạo |
+| ArtistName  | string   | ❌       | Tên nghệ sĩ    |
+| ReleaseDate | DateTime | ❌       | Ngày phát hành |
+| CreatedAt   | DateTime | ❌       | Ngày tạo       |
+| UpdatedAt   | DateTime | ✅       | Ngày cập nhật  |
 
 ### PlaylistDto
 
 ```json
 {
-  "PlaylistId": "guid",
-  "Title": "Tên playlist",
-  "Description": "Mô tả",
-  "CreatedBy": "Tên người dùng",
-  "CreatedAt": "2026-01-30T10:00:00",
-  "UpdatedAt": "2026-01-31T15:30:00",
+  "PlaylistId": "8129dfc2-221a-4e09-9ca1-cff1f71e27cd",
+  "Title": "Danh sách phát của tôi #1",
+  "Thumbnail": "https://res.cloudinary.com/.../playlist.jpg",
+  "Description": "Mô tả playlist",
+  "CreatedBy": "Dinh The Danh",
+  "CreatedAt": "2026-02-24T21:46:13",
+  "UpdatedAt": "2026-03-01T16:43:20",
   "SongCount": 5
 }
 ```
+
+| Field       | Type     | Nullable | Mô tả                     |
+| ----------- | -------- | -------- | ------------------------- |
+| PlaylistId  | Guid     | ❌       | ID playlist               |
+| Title       | string   | ❌       | Tên playlist              |
+| Thumbnail   | string   | ✅       | Ảnh bìa                   |
+| Description | string   | ✅       | Mô tả                     |
+| CreatedBy   | string   | ❌       | Tên người tạo             |
+| CreatedAt   | DateTime | ❌       | Ngày tạo                  |
+| UpdatedAt   | DateTime | ✅       | Ngày cập nhật             |
+| SongCount   | int      | ❌       | Số bài hát trong playlist |
+
+### PlaylistInfoDto (dùng trong Playlist Details)
+
+```json
+{
+  "PlaylistId": "8129dfc2-221a-4e09-9ca1-cff1f71e27cd",
+  "Title": "Danh sách phát của tôi #1",
+  "Thumbnail": "https://res.cloudinary.com/.../playlist.jpg",
+  "Description": "Mô tả playlist",
+  "CreatedAt": "2026-02-24T21:46:13",
+  "CreatedBy": "Dinh The Danh",
+  "CreatedById": "514685e6-5141-40c6-84c6-37c43da959aa"
+}
+```
+
+| Field       | Type     | Nullable | Mô tả         |
+| ----------- | -------- | -------- | ------------- |
+| PlaylistId  | Guid     | ❌       | ID playlist   |
+| Title       | string   | ❌       | Tên playlist  |
+| Thumbnail   | string   | ✅       | Ảnh bìa       |
+| Description | string   | ✅       | Mô tả         |
+| CreatedAt   | DateTime | ❌       | Ngày tạo      |
+| CreatedBy   | string   | ✅       | Tên người tạo |
+| CreatedById | Guid     | ✅       | ID người tạo  |
+
+### GenreDto
+
+```json
+{
+  "Id": "b1c2d3e4-5678-90ab-cdef-1234567890ab",
+  "Name": "Pop",
+  "ImageUrl": "https://res.cloudinary.com/.../pop.jpg"
+}
+```
+
+| Field    | Type   | Nullable | Mô tả        |
+| -------- | ------ | -------- | ------------ |
+| Id       | Guid   | ❌       | ID thể loại  |
+| Name     | string | ✅       | Tên thể loại |
+| ImageUrl | string | ✅       | Ảnh thể loại |
+
+### ArtistDto
+
+```json
+{
+  "UserId": "514685e6-5141-40c6-84c6-37c43da959aa",
+  "FullName": "Dinh The Danh",
+  "Avatar": "https://ui-avatars.com/api/?name=Dinh+The+Danh&...",
+  "Bio": "Ca sĩ, nhạc sĩ",
+  "ArtistType": "Singer"
+}
+```
+
+| Field      | Type   | Nullable | Mô tả                       |
+| ---------- | ------ | -------- | --------------------------- |
+| UserId     | Guid   | ❌       | ID nghệ sĩ                  |
+| FullName   | string | ❌       | Tên nghệ sĩ                 |
+| Avatar     | string | ❌       | Ảnh đại diện                |
+| Bio        | string | ❌       | Mô tả                       |
+| ArtistType | string | ✅       | Loại nghệ sĩ (Singer, etc.) |
+
+### UserProfileDto
+
+```json
+{
+  "UserId": "514685e6-5141-40c6-84c6-37c43da959aa",
+  "Username": "dinhthedanh",
+  "Email": "danh@example.com",
+  "FullName": "Dinh The Danh",
+  "Avatar": "https://...",
+  "Bio": "Mô tả về bản thân",
+  "Role": "Artist"
+}
+```
+
+| Field    | Type   | Nullable | Mô tả         |
+| -------- | ------ | -------- | ------------- |
+| UserId   | Guid   | ❌       | ID người dùng |
+| Username | string | ✅       | Tên đăng nhập |
+| Email    | string | ✅       | Email         |
+| FullName | string | ✅       | Họ tên        |
+| Avatar   | string | ✅       | Ảnh đại diện  |
+| Bio      | string | ✅       | Mô tả         |
+| Role     | string | ✅       | Vai trò       |
+
+### AuthResponseDto
+
+```json
+{
+  "Token": "eyJhbGciOiJIUzI1NiIs...",
+  "RefreshToken": "abc123def456...",
+  "FullName": "Nguyễn Văn A",
+  "Avatar": "https://...",
+  "Role": "Artist",
+  "IsNewUser": false
+}
+```
+
+| Field        | Type   | Nullable | Mô tả                             |
+| ------------ | ------ | -------- | --------------------------------- |
+| Token        | string | ❌       | JWT Access Token                  |
+| RefreshToken | string | ✅       | Refresh Token                     |
+| FullName     | string | ❌       | Họ tên                            |
+| Avatar       | string | ❌       | Ảnh đại diện                      |
+| Role         | string | ❌       | Vai trò (User / Artist / Admin)   |
+| IsNewUser    | bool   | ❌       | true nếu lần đầu đăng nhập Google |
 
 ### PagingResult\<T\>
 
@@ -888,6 +1743,14 @@ GET /Recommendation/albums/{userId}?topN=10
 }
 ```
 
+| Field        | Type | Mô tả                             |
+| ------------ | ---- | --------------------------------- |
+| Data         | T[]  | Mảng dữ liệu                      |
+| TotalRecords | int  | Tổng số bản ghi                   |
+| TotalPages   | int  | Tổng số trang                     |
+| FromRecord   | int  | Bản ghi bắt đầu (vd: 1, 11, 21)   |
+| ToRecord     | int  | Bản ghi kết thúc (vd: 10, 20, 30) |
+
 ---
 
 ## 🔐 Error Responses
@@ -896,7 +1759,7 @@ GET /Recommendation/albums/{userId}?topN=10
 
 ```json
 {
-  "Message": "Thông báo lỗi"
+  "Message": "Thông báo lỗi cụ thể"
 }
 ```
 
@@ -916,54 +1779,78 @@ GET /Recommendation/albums/{userId}?topN=10
 }
 ```
 
+### 404 Not Found
+
+```json
+{
+  "Message": "Không tìm thấy tài nguyên"
+}
+```
+
 ---
 
 ## 📌 Summary Table
 
-| #   | Endpoint                                       | Method | Auth | Desc                         |
-| --- | ---------------------------------------------- | ------ | ---- | ---------------------------- |
-| -   | **AUTH**                                       |        |      |                              |
-| A1  | `/Auth/login`                                  | POST   | ❌   | Đăng nhập                    |
-| A2  | `/Auth/google-login`                           | POST   | ❌   | Đăng nhập Google             |
-| A3  | `/Auth/register`                               | POST   | ❌   | Đăng ký                      |
-| A4  | `/Auth/refresh-token`                          | POST   | ❌   | Làm mới token                |
-| A5  | `/Auth/logout`                                 | POST   | ✅   | Đăng xuất                    |
-| A6  | `/Auth/forgot-password`                        | POST   | ❌   | Quên mật khẩu                |
-| A7  | `/Auth/reset-password`                         | POST   | ❌   | Đặt lại mật khẩu             |
-| -   | **MUSIC**                                      |        |      |                              |
-| 1   | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)      |
-| 2   | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình (search)    |
-| 3   | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                  |
-| 4   | `/Music/song/{id}`                             | PUT    | ✅   | Cập nhật bài hát             |
-| 5   | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                  |
-| 6   | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)        |
-| 7   | `/Music/my-albums`                             | GET    | ✅   | Album của mình (search)      |
-| 8   | `/Music/album`                                 | POST   | ✅   | Tạo album                    |
-| 9   | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album               |
-| 10  | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                    |
-| 11  | `/Music/album/{id}`                            | GET    | ❌   | Chi tiết album + bài hát     |
-| 12  | `/Music/album/{id}/add-song/{sid}`             | POST   | ✅   | Thêm bài hát vào album       |
-| 13  | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)     |
-| 14  | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình (search)   |
-| -   | **INTERACTION**                                |        |      |                              |
-| 15  | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                 |
-| 16  | `/Interaction/playlist/{id}`                   | GET    | ❌   | Chi tiết playlist            |
-| 17  | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist            |
-| 18  | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                 |
-| 19  | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist    |
-| 20  | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist    |
-| 21  | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album       |
-| 22  | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát       |
-| 23  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích  |
-| 24  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user    |
-| 25  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi |
-| -   | **GENRE**                                      |        |      |                              |
-| 26  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại              |
-| 27  | `/Music/genre`                                 | POST   | ✅   | Tạo thể loại                 |
-| -   | **RECOMMENDATION**                             |        |      |                              |
-| 28  | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát              |
-| 29  | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                |
+| #   | Endpoint                                       | Method | Auth | Desc                           |
+| --- | ---------------------------------------------- | ------ | ---- | ------------------------------ |
+| -   | **AUTH**                                       |        |      |                                |
+| 1   | `/Auth/login`                                  | POST   | ❌   | Đăng nhập                      |
+| 2   | `/Auth/google-login`                           | POST   | ❌   | Đăng nhập Google               |
+| 3   | `/Auth/register`                               | POST   | ❌   | Đăng ký                        |
+| 4   | `/Auth/refresh-token`                          | POST   | ❌   | Làm mới token                  |
+| 5   | `/Auth/logout`                                 | POST   | ✅   | Đăng xuất                      |
+| 6   | `/Auth/set-role`                               | POST   | ✅   | Cập nhật vai trò               |
+| 7   | `/Auth/change-password`                        | PUT    | ✅   | Đổi mật khẩu                   |
+| 8   | `/Auth/forgot-password`                        | POST   | ❌   | Quên mật khẩu                  |
+| 9   | `/Auth/reset-password`                         | POST   | ❌   | Đặt lại mật khẩu               |
+| -   | **USER**                                       |        |      |                                |
+| 10  | `/User/profile`                                | GET    | ✅   | Xem hồ sơ                      |
+| 11  | `/User/profile`                                | PUT    | ✅   | Cập nhật hồ sơ                 |
+| 12  | `/User/update-interests`                       | POST   | ✅   | Cập nhật sở thích genre        |
+| -   | **ARTIST**                                     |        |      |                                |
+| 13  | `/Artist`                                      | GET    | ❌   | Tìm kiếm nghệ sĩ               |
+| 14  | `/Artist/{id}/songs`                           | GET    | ❌   | Bài hát của nghệ sĩ            |
+| -   | **FILE**                                       |        |      |                                |
+| 15  | `/File/upload-image`                           | POST   | ❌   | Upload ảnh lên Cloudinary      |
+| 16  | `/File/upload-audio`                           | POST   | ❌   | Upload nhạc lên Cloudinary     |
+| 17  | `/File/signature`                              | GET    | ❌   | Lấy signature upload trực tiếp |
+| -   | **MUSIC (SONGS)**                              |        |      |                                |
+| 18  | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)        |
+| 19  | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình               |
+| 20  | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                    |
+| 21  | `/Music/song/{id}`                             | PUT    | ✅   | Cập nhật bài hát               |
+| 22  | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                    |
+| 23  | `/Music/check-hash/{hash}`                     | GET    | ❌   | Kiểm tra file trùng            |
+| -   | **MUSIC (ALBUMS)**                             |        |      |                                |
+| 24  | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)          |
+| 25  | `/Music/my-albums`                             | GET    | ✅   | Album của mình                 |
+| 26  | `/Music/album`                                 | POST   | ✅   | Tạo album                      |
+| 27  | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album                 |
+| 28  | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                      |
+| 29  | `/Music/album/{id}`                            | GET    | ❌   | Chi tiết album + bài hát       |
+| 30  | `/Music/album/{id}/add-song/{sid}`             | POST   | ✅   | Thêm bài hát vào album         |
+| 31  | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album         |
+| -   | **MUSIC (PLAYLISTS)**                          |        |      |                                |
+| 32  | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)       |
+| 33  | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình              |
+| 34  | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                   |
+| 35  | `/Interaction/playlist/{id}`                   | GET    | ✅   | Chi tiết playlist              |
+| 36  | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist              |
+| 37  | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                   |
+| 38  | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist      |
+| 39  | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist      |
+| -   | **LIKE / FOLLOW**                              |        |      |                                |
+| 40  | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát         |
+| 41  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích    |
+| 42  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user      |
+| 43  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi   |
+| -   | **GENRE**                                      |        |      |                                |
+| 44  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại                |
+| 45  | `/Music/genre`                                 | POST   | ✅   | Tạo thể loại                   |
+| -   | **RECOMMENDATION**                             |        |      |                                |
+| 46  | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát                |
+| 47  | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                  |
 
 ---
 
-**Total: 7 Auth + 29 Feature = 36 Endpoints** ✅
+**Total: 9 Auth + 3 User + 2 Artist + 3 File + 30 Feature = 47 Endpoints** ✅
