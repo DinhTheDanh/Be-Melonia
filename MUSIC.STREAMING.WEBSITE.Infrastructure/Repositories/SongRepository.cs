@@ -63,10 +63,11 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         await _connection.ExecuteAsync(sql, parameters);
     }
 
-    public async Task<PagingResult<SongDto>> GetAllSongsWithArtistAsync(string keyword, int pageIndex, int pageSize)
+    public async Task<PagingResult<SongDto>> GetAllSongsWithArtistAsync(string keyword, int pageIndex, int pageSize, Guid? genreId = null)
     {
         var p = new DynamicParameters();
         string whereSql = "WHERE s.is_public = 1";
+        string joinSql = "";
 
         if (!string.IsNullOrEmpty(keyword))
         {
@@ -74,8 +75,15 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
             p.Add("Key", $"%{keyword}%");
         }
 
+        if (genreId.HasValue)
+        {
+            joinSql += " JOIN song_genres sg ON s.song_id = sg.song_id";
+            whereSql += " AND sg.genre_id = @GenreId";
+            p.Add("GenreId", genreId.Value);
+        }
+
         // Đếm tổng
-        var countSql = $"SELECT COUNT(1) FROM songs s {whereSql}";
+        var countSql = $"SELECT COUNT(1) FROM songs s {joinSql} {whereSql}";
         var totalRecords = await _connection.ExecuteScalarAsync<int>(countSql, p);
 
         // Lấy dữ liệu 
@@ -87,8 +95,11 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
                    s.created_at as CreatedAt, s.updated_at as UpdatedAt,
                    s.album_id as AlbumId, al.title as AlbumTitle,
-                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+                   GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
+                   (SELECT COUNT(*) FROM user_likes ul WHERE ul.song_id = s.song_id) as LikeCount,
+                   (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss WHERE uss.song_id = s.song_id) as ListenCount
             FROM songs s
+            {joinSql}
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id
             LEFT JOIN albums al ON s.album_id = al.album_id
@@ -131,7 +142,9 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
                    s.created_at as CreatedAt, s.updated_at as UpdatedAt,
                    s.album_id as AlbumId, al.title as AlbumTitle,
-                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+                   GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
+                   (SELECT COUNT(*) FROM user_likes ul WHERE ul.song_id = s.song_id) as LikeCount,
+                   (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss WHERE uss.song_id = s.song_id) as ListenCount
             FROM songs s
             JOIN song_artists sa_check ON s.song_id = sa_check.song_id
             LEFT JOIN song_artists sa_all ON s.song_id = sa_all.song_id
@@ -184,7 +197,9 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
         var sql = $@"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration, s.created_at, s.updated_at,
                    s.album_id as AlbumId, al.title as AlbumTitle,
-                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+                   GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
+                   (SELECT COUNT(*) FROM user_likes ul WHERE ul.song_id = s.song_id) as LikeCount,
+                   (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss WHERE uss.song_id = s.song_id) as ListenCount
             FROM songs s
             JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id
@@ -232,7 +247,9 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
                    s.created_at as CreatedAt, s.updated_at as UpdatedAt,
                    s.album_id as AlbumId, al.title as AlbumTitle,
-                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+                   GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
+                   (SELECT COUNT(*) FROM user_likes ul WHERE ul.song_id = s.song_id) as LikeCount,
+                   (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss WHERE uss.song_id = s.song_id) as ListenCount
             FROM songs s
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
             LEFT JOIN users u ON sa.artist_id = u.user_id

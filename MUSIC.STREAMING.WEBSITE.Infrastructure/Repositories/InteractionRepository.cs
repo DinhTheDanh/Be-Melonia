@@ -50,7 +50,9 @@ public class InteractionRepository : IInteractionRepository
                s.created_at as CreatedAt, s.updated_at as UpdatedAt,
                s.is_public as IsPublic, s.lyrics, s.file_hash as FileHash,
                s.album_id as AlbumId, al.title as AlbumTitle,
-               GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames
+               GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
+               (SELECT COUNT(*) FROM user_likes ul2 WHERE ul2.song_id = s.song_id) as LikeCount,
+               (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss WHERE uss.song_id = s.song_id) as ListenCount
         FROM songs s 
         JOIN user_likes ul ON s.song_id = ul.song_id
         LEFT JOIN song_artists sa ON s.song_id = sa.song_id
@@ -217,7 +219,9 @@ public class InteractionRepository : IInteractionRepository
         var songsSql = @"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
                    s.album_id as AlbumId, al.title as AlbumTitle,
-                   GROUP_CONCAT(u.full_name SEPARATOR ', ') as ArtistNames,
+                   GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
+                   (SELECT COUNT(*) FROM user_likes ul WHERE ul.song_id = s.song_id) as LikeCount,
+                   (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss WHERE uss.song_id = s.song_id) as ListenCount,
                    MAX(ps.added_at) as AddedAt
             FROM songs s
             LEFT JOIN song_artists sa ON s.song_id = sa.song_id
@@ -259,6 +263,44 @@ public class InteractionRepository : IInteractionRepository
         var result = await _connection.ExecuteAsync(updateSql, new { SongId = songId, AlbumId = albumId });
 
         if (result == 0) throw new Exception("Bài hát không thuộc album này");
+    }
+
+    public async Task RecordPlayAsync(Guid userId, Guid songId, int durationListened, bool completed, string? source)
+    {
+        // 1. Upsert user_song_stats: tăng play_count, cộng dồn total_listen_time, cập nhật last_played
+        var upsertSql = @"
+            INSERT INTO user_song_stats (user_id, song_id, play_count, total_listen_time, last_played, skip_count)
+            VALUES (@UserId, @SongId, 1, @Duration, NOW(), @SkipIncrement)
+            ON DUPLICATE KEY UPDATE
+                play_count = play_count + 1,
+                total_listen_time = total_listen_time + @Duration,
+                last_played = NOW(),
+                skip_count = skip_count + @SkipIncrement";
+
+        int skipIncrement = completed ? 0 : 1;
+
+        await _connection.ExecuteAsync(upsertSql, new
+        {
+            UserId = userId,
+            SongId = songId,
+            Duration = durationListened,
+            SkipIncrement = skipIncrement
+        });
+
+        // 2. Insert listening_history
+        var historySql = @"
+            INSERT INTO listening_history (id, user_id, song_id, listened_at, duration_listened, completed, source)
+            VALUES (@Id, @UserId, @SongId, NOW(), @Duration, @Completed, @Source)";
+
+        await _connection.ExecuteAsync(historySql, new
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            SongId = songId,
+            Duration = durationListened,
+            Completed = completed,
+            Source = source
+        });
     }
 }
 

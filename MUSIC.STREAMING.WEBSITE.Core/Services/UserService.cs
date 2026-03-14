@@ -76,14 +76,25 @@ public class UserService : IUserService
     {
         var result = await _userRepository.GetArtistsPagingAsync(keyword, pageIndex, pageSize);
 
-        var artistDtos = result.Data.Select(u => new ArtistDto
+        var artistIds = result.Data.Select(u => u.UserId).ToList();
+        var statsMap = await _userRepository.GetArtistsStatsBatchAsync(artistIds);
+
+        var artistDtos = result.Data.Select(u =>
         {
-            UserId = u.UserId,
-            FullName = u.FullName,
-            Avatar = u.Avatar,
-            Banner = u.Banner,
-            Bio = u.Bio,
-            ArtistType = u.ArtistType
+            statsMap.TryGetValue(u.UserId, out var stats);
+            return new ArtistDto
+            {
+                UserId = u.UserId,
+                FullName = u.FullName,
+                Avatar = u.Avatar,
+                Banner = u.Banner,
+                Bio = u.Bio,
+                ArtistType = u.ArtistType,
+                FollowerCount = stats?.FollowerCount ?? 0,
+                SongCount = stats?.SongCount ?? 0,
+                TotalLikes = stats?.TotalLikes ?? 0,
+                TotalListens = stats?.TotalListens ?? 0
+            };
         });
 
         return new PagingResult<ArtistDto>

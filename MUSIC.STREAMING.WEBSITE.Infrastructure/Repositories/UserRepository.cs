@@ -41,8 +41,7 @@ public class UserRepository : BaseRepository<User>, IUserRepository
     {
         var parameters = new DynamicParameters();
 
-        string whereSql = "WHERE role = @Role";
-        parameters.Add("Role", "Artist");
+        string whereSql = "WHERE (role = 'Artist' OR role = 'ArtistPremium')";
         parameters.Add("Active", true);
         whereSql += " AND is_active = @Active";
 
@@ -60,9 +59,13 @@ public class UserRepository : BaseRepository<User>, IUserRepository
         parameters.Add("Limit", pageSize);
 
         string dataSql = $@"
-            SELECT * FROM users 
+            SELECT u.*, 
+                   (SELECT COUNT(*) FROM user_follows uf WHERE uf.following_id = u.user_id) as FollowerCount
+            FROM users u
             {whereSql} 
-            ORDER BY created_at DESC 
+            ORDER BY FollowerCount DESC, 
+                     CASE WHEN u.role = 'ArtistPremium' THEN 0 ELSE 1 END,
+                     u.created_at DESC 
             LIMIT @Limit OFFSET @Offset";
         var items = await _connection.QueryAsync<User>(dataSql, parameters);
         int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
@@ -102,5 +105,45 @@ public class UserRepository : BaseRepository<User>, IUserRepository
             INNER JOIN genres g ON ufg.genre_id = g.id
             WHERE ufg.user_id = @UserId";
         return await _connection.QueryAsync<Core.DTOs.GenreDto>(sql, new { UserId = userId });
+    }
+
+    public async Task<Core.DTOs.ArtistStatsDto> GetArtistStatsAsync(Guid artistId)
+    {
+        var sql = @"
+            SELECT 
+                @ArtistId as ArtistId,
+                (SELECT COUNT(*) FROM user_follows WHERE following_id = @ArtistId) as FollowerCount,
+                (SELECT COUNT(DISTINCT sa.song_id) FROM song_artists sa WHERE sa.artist_id = @ArtistId) as SongCount,
+                (SELECT COUNT(*) FROM user_likes ul 
+                 JOIN song_artists sa ON ul.song_id = sa.song_id 
+                 WHERE sa.artist_id = @ArtistId) as TotalLikes,
+                (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss 
+                 JOIN song_artists sa ON uss.song_id = sa.song_id 
+                 WHERE sa.artist_id = @ArtistId) as TotalListens";
+
+        return await _connection.QueryFirstAsync<Core.DTOs.ArtistStatsDto>(sql, new { ArtistId = artistId });
+    }
+
+    public async Task<Dictionary<Guid, Core.DTOs.ArtistStatsDto>> GetArtistsStatsBatchAsync(IEnumerable<Guid> artistIds)
+    {
+        var idList = artistIds.ToList();
+        if (!idList.Any()) return new Dictionary<Guid, Core.DTOs.ArtistStatsDto>();
+
+        var sql = @"
+            SELECT 
+                u.user_id as ArtistId,
+                (SELECT COUNT(*) FROM user_follows uf WHERE uf.following_id = u.user_id) as FollowerCount,
+                (SELECT COUNT(DISTINCT sa.song_id) FROM song_artists sa WHERE sa.artist_id = u.user_id) as SongCount,
+                (SELECT COUNT(*) FROM user_likes ul 
+                 JOIN song_artists sa ON ul.song_id = sa.song_id 
+                 WHERE sa.artist_id = u.user_id) as TotalLikes,
+                (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss 
+                 JOIN song_artists sa ON uss.song_id = sa.song_id 
+                 WHERE sa.artist_id = u.user_id) as TotalListens
+            FROM users u
+            WHERE u.user_id IN @ArtistIds";
+
+        var stats = await _connection.QueryAsync<Core.DTOs.ArtistStatsDto>(sql, new { ArtistIds = idList });
+        return stats.ToDictionary(s => s.ArtistId, s => s);
     }
 }

@@ -7,3 +7,9 @@ public class CreateGenreDto
     public required string Name { get; set; }
     public string? ImageUrl { get; set; }
 }
+
+public class UpdateGenreDto
+{
+    public string? Name { get; set; }
+    public string? ImageUrl { get; set; }
+}

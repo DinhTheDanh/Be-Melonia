@@ -1342,6 +1342,46 @@ GET /Interaction/followings?pageIndex=1&pageSize=10
 
 ---
 
+### 44.5. Record Play (Ghi nhận lượt nghe) ✅
+
+```
+POST /Interaction/record-play
+```
+
+**Body (JSON):**
+
+```json
+{
+  "SongId": "uuid-of-song",
+  "DurationListened": 180,
+  "Completed": true,
+  "Source": "playlist"
+}
+```
+
+| Trường             | Kiểu     | Bắt buộc | Mô tả                                                      |
+| ------------------ | -------- | -------- | ---------------------------------------------------------- |
+| `SongId`           | `Guid`   | ✅       | ID bài hát                                                 |
+| `DurationListened` | `int`    | ✅       | Số giây đã nghe                                            |
+| `Completed`        | `bool`   | ✅       | `true` = nghe hết, `false` = skip                          |
+| `Source`           | `string` | ❌       | `"playlist"` / `"album"` / `"search"` / `"recommendation"` |
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Đã ghi nhận lượt nghe"
+}
+```
+
+> **Lưu ý:** Frontend nên gọi API này khi:
+>
+> - Bài hát kết thúc tự nhiên (`Completed: true`)
+> - User skip bài (đã nghe > 10 giây) (`Completed: false`)
+> - KHÔNG gọi nếu nghe dưới 10 giây
+
+---
+
 ## 🏷️ GENRE ENDPOINTS
 
 ### 45. Get All Genres
@@ -1371,7 +1411,7 @@ GET /Music/genres
 
 ---
 
-### 46. Create Genre ✅
+### 46. Create Genre 🔑
 
 ```
 POST /Music/genre
@@ -1393,6 +1433,62 @@ Content-Type: application/json
     "Name": "Rock",
     "ImageUrl": "https://..."
   }
+}
+```
+
+---
+
+### 47. Update Genre 🔑
+
+```
+PUT /Music/genre/{genreId}
+Content-Type: application/json
+
+{
+  "Name": "Pop Rock",
+  "ImageUrl": "https://new-image-url..."
+}
+```
+
+> Tất cả trường đều optional. Chỉ trường nào được gửi mới cập nhật.
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Cập nhật thể loại thành công"
+}
+```
+
+**Response (404 Not Found):**
+
+```json
+{
+  "Message": "Thể loại không tồn tại"
+}
+```
+
+---
+
+### 48. Delete Genre 🔑
+
+```
+DELETE /Music/genre/{genreId}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Xóa thể loại thành công"
+}
+```
+
+**Response (404 Not Found):**
+
+```json
+{
+  "Message": "Thể loại không tồn tại"
 }
 ```
 
@@ -1789,7 +1885,528 @@ GET /Recommendation/albums/{userId}?topN=10
 
 ---
 
-## 📌 Summary Table
+## � Admin API
+
+> Tất cả endpoints bên dưới yêu cầu JWT với role **Admin**.
+> Header: `Authorization: Bearer <token>`
+> Nếu không phải Admin → trả về **403 Forbidden**.
+
+---
+
+### 1. `GET /Admin/dashboard`
+
+Lấy thống kê tổng quan dashboard.
+
+**Response 200:**
+
+```json
+{
+  "TotalUsers": 1250,
+  "TotalArtists": 85,
+  "TotalSongs": 3420,
+  "TotalSubscriptions": 340,
+  "TotalRevenue": 156000000,
+  "NewUsersToday": 12,
+  "NewSongsToday": 5
+}
+```
+
+---
+
+### 2. `GET /Admin/users`
+
+Lấy danh sách tất cả users (phân trang, tìm kiếm, lọc role).
+
+**Query Parameters:**
+
+| Param     | Type   | Default | Description                                               |
+| --------- | ------ | ------- | --------------------------------------------------------- |
+| keyword   | string | ""      | Tìm theo tên, email, username                             |
+| pageIndex | int    | 1       | Trang hiện tại                                            |
+| pageSize  | int    | 15      | Số item mỗi trang                                         |
+| role      | string | ""      | Lọc theo role: `User`, `Artist`, `ArtistPremium`, `Admin` |
+
+**Response 200:**
+
+```json
+{
+  "Data": [
+    {
+      "UserId": "guid-string",
+      "FullName": "Nguyễn Văn A",
+      "UserName": "nguyenvana",
+      "Email": "user@example.com",
+      "AvatarUrl": "https://...",
+      "Role": "User",
+      "IsBanned": false,
+      "CreatedAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "TotalCount": 1250,
+  "PageIndex": 1,
+  "PageSize": 15
+}
+```
+
+---
+
+### 3. `POST /Admin/users/{userId}/toggle-ban`
+
+Ban hoặc Unban một user (toggle `IsActive`).
+
+**Response 200:**
+
+```json
+{
+  "Success": true,
+  "Message": "User has been banned",
+  "IsBanned": true
+}
+```
+
+**Response 404:** User không tồn tại.
+
+---
+
+### 4. `GET /Admin/artists`
+
+Lấy danh sách artists kèm thống kê (SongCount, FollowerCount, TotalListens).
+
+**Query Parameters:**
+
+| Param     | Type   | Default | Description         |
+| --------- | ------ | ------- | ------------------- |
+| keyword   | string | ""      | Tìm theo tên artist |
+| pageIndex | int    | 1       | Trang hiện tại      |
+| pageSize  | int    | 15      | Số item mỗi trang   |
+
+**Response 200:**
+
+```json
+{
+  "Data": [
+    {
+      "UserId": "guid-string",
+      "ArtistId": "guid-string",
+      "FullName": "Artist Name",
+      "ArtistName": "Stage Name",
+      "Email": "artist@example.com",
+      "AvatarUrl": "https://...",
+      "SongCount": 25,
+      "FollowerCount": 1200,
+      "TotalListens": 50000,
+      "CreatedAt": "2024-01-10T08:00:00Z"
+    }
+  ],
+  "TotalCount": 85,
+  "PageIndex": 1,
+  "PageSize": 15
+}
+```
+
+---
+
+### 5. `GET /Admin/songs`
+
+Lấy danh sách tất cả bài hát kèm thống kê.
+
+**Query Parameters:**
+
+| Param     | Type   | Default | Description                  |
+| --------- | ------ | ------- | ---------------------------- |
+| keyword   | string | ""      | Tìm theo tên bài hát, artist |
+| pageIndex | int    | 1       | Trang hiện tại               |
+| pageSize  | int    | 15      | Số item mỗi trang            |
+
+**Response 200:**
+
+```json
+{
+  "Data": [
+    {
+      "Id": "guid-string",
+      "SongId": "guid-string",
+      "Title": "Song Name",
+      "ArtistNames": "Artist 1, Artist 2",
+      "Thumbnail": "https://...",
+      "FileUrl": "https://...",
+      "Duration": 245,
+      "ListenCount": 5000,
+      "LikeCount": 320,
+      "GenreName": "Pop",
+      "CreatedAt": "2024-02-01T12:00:00Z"
+    }
+  ],
+  "TotalCount": 3420,
+  "PageIndex": 1,
+  "PageSize": 15
+}
+```
+
+---
+
+### 6. `DELETE /Admin/songs/{songId}`
+
+Xóa bài hát (admin force delete) — xóa cả song_artists, song_genres, user_likes, playlist_songs...
+
+**Response 200:**
+
+```json
+{
+  "Message": "Song deleted successfully"
+}
+```
+
+**Response 404:** Bài hát không tồn tại.
+
+---
+
+### 7. `GET /Admin/subscriptions`
+
+Lấy danh sách tất cả subscriptions (phân trang, lọc status).
+
+**Query Parameters:**
+
+| Param     | Type   | Default | Description                           |
+| --------- | ------ | ------- | ------------------------------------- |
+| keyword   | string | ""      | Tìm theo tên user                     |
+| pageIndex | int    | 1       | Trang hiện tại                        |
+| pageSize  | int    | 15      | Số item mỗi trang                     |
+| status    | string | ""      | Lọc: `Active`, `Expired`, `Cancelled` |
+
+**Response 200:**
+
+```json
+{
+  "Data": [
+    {
+      "SubscriptionId": "guid-string",
+      "UserId": "guid-string",
+      "UserName": "nguyenvana",
+      "FullName": "Nguyễn Văn A",
+      "PlanId": "guid-string",
+      "PlanName": "1 Year Premium",
+      "Status": "Active",
+      "StartDate": "2024-06-01T00:00:00Z",
+      "EndDate": "2025-06-01T00:00:00Z",
+      "CreatedAt": "2024-06-01T00:00:00Z"
+    }
+  ],
+  "TotalCount": 340,
+  "PageIndex": 1,
+  "PageSize": 15
+}
+```
+
+---
+
+### 8. `GET /Admin/payments`
+
+Lấy danh sách tất cả payments (phân trang, lọc status).
+
+**Query Parameters:**
+
+| Param     | Type   | Default | Description                                     |
+| --------- | ------ | ------- | ----------------------------------------------- |
+| keyword   | string | ""      | Tìm theo tên user                               |
+| pageIndex | int    | 1       | Trang hiện tại                                  |
+| pageSize  | int    | 15      | Số item mỗi trang                               |
+| status    | string | ""      | Lọc: `Pending`, `Success`, `Failed`, `Rejected` |
+
+**Response 200:**
+
+```json
+{
+  "Data": [
+    {
+      "PaymentId": "guid-string",
+      "UserId": "guid-string",
+      "UserName": "nguyenvana",
+      "FullName": "Nguyễn Văn A",
+      "Amount": 349000,
+      "PlanName": "1 Year Premium",
+      "PlanId": "guid-string",
+      "Status": "Pending",
+      "PaymentMethod": "VNPay",
+      "TransactionId": null,
+      "CreatedAt": "2024-06-15T14:30:00Z"
+    }
+  ],
+  "TotalCount": 150,
+  "PageIndex": 1,
+  "PageSize": 15
+}
+```
+
+---
+
+### 9. `GET /Admin/payments/pending`
+
+Lấy danh sách payments đang chờ duyệt (status = `Pending`).
+
+**Query Parameters:**
+
+| Param     | Type | Default | Description       |
+| --------- | ---- | ------- | ----------------- |
+| pageIndex | int  | 1       | Trang hiện tại    |
+| pageSize  | int  | 15      | Số item mỗi trang |
+
+**Response 200:** Cùng format với `GET /Admin/payments`, chỉ trả về `Pending`.
+
+---
+
+### 10. `POST /Admin/payments/{paymentId}/approve`
+
+Duyệt payment → cập nhật payment `Success` → tạo subscription mới → cập nhật role user.
+
+**Response 200:**
+
+```json
+{
+  "Message": "Payment approved and subscription activated"
+}
+```
+
+**Response 404:** Payment không tồn tại hoặc không ở trạng thái Pending.
+
+---
+
+### 11. `POST /Admin/payments/{paymentId}/reject`
+
+Từ chối payment → cập nhật payment `Rejected`.
+
+**Response 200:**
+
+```json
+{
+  "Message": "Payment rejected"
+}
+```
+
+**Response 404:** Payment không tồn tại hoặc không ở trạng thái Pending.
+
+---
+
+### 12. `POST /Admin/users/{userId}/set-role`
+
+Thay đổi role của user. Roles hợp lệ: `User`, `Artist`, `ArtistPremium`, `Admin`.
+
+**Request Body:**
+
+```json
+{
+  "Role": "Artist"
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "Message": "User role updated",
+  "UserId": "guid",
+  "OldRole": "User",
+  "NewRole": "Artist"
+}
+```
+
+**Response 400:** Role không hợp lệ hoặc user đã có role này.
+**Response 404:** User không tồn tại.
+
+---
+
+### 13. `PUT /Admin/payments/{paymentId}/status`
+
+Cập nhật trạng thái payment. Statuses hợp lệ: `Pending`, `Success`, `Failed`, `Rejected`, `Cancelled`.
+Nếu chuyển sang `Success` → tự động tạo subscription + cập nhật role user.
+
+**Request Body:**
+
+```json
+{
+  "Status": "Success"
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "Message": "Payment status updated",
+  "PaymentId": "guid",
+  "NewStatus": "Success",
+  "RoleUpdated": true
+}
+```
+
+**Response 400:** Status không hợp lệ.
+**Response 404:** Payment không tồn tại.
+
+---
+
+### 14. `POST /Admin/payments/cancel-expired`
+
+Tự động hủy các payment `Pending` quá hạn.
+
+**Query Params:**
+
+| Param         | Type | Default | Mô tả                             |
+| ------------- | ---- | ------- | --------------------------------- |
+| daysThreshold | int  | 15      | Số ngày để coi payment là quá hạn |
+
+**Response 200:**
+
+```json
+{
+  "CancelledCount": 3,
+  "CancelledPaymentIds": ["guid1", "guid2", "guid3"]
+}
+```
+
+---
+
+### 15. `POST /Admin/notifications/send`
+
+Admin gửi thông báo cho user cụ thể.
+
+**Request Body:**
+
+```json
+{
+  "UserId": "guid",
+  "Title": "Thông báo từ Admin",
+  "Message": "Nội dung thông báo",
+  "Type": "admin",
+  "RelatedEntityId": null
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "Data": "notification-guid"
+}
+```
+
+---
+
+## 🔔 11. NOTIFICATION API
+
+> Yêu cầu đăng nhập (JWT). Thông báo được push real-time qua SignalR Hub `/hubs/notification`.
+
+### 1. `GET /Notification`
+
+Lấy danh sách thông báo của user hiện tại (phân trang).
+
+**Query Params:**
+
+| Param     | Type | Default | Mô tả              |
+| --------- | ---- | ------- | ------------------ |
+| pageIndex | int  | 1       | Trang hiện tại     |
+| pageSize  | int  | 20      | Số items mỗi trang |
+
+**Response 200:**
+
+```json
+{
+  "Data": [
+    {
+      "Id": "guid",
+      "UserId": "guid",
+      "Title": "Payment approved",
+      "Message": "Your payment for plan Premium has been approved",
+      "Type": "payment",
+      "IsRead": false,
+      "RelatedEntityId": "guid",
+      "CreatedAt": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "TotalRecords": 10,
+  "TotalPages": 1,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
+
+---
+
+### 2. `GET /Notification/unread-count`
+
+Đếm số thông báo chưa đọc.
+
+**Response 200:**
+
+```json
+{
+  "UnreadCount": 5
+}
+```
+
+---
+
+### 3. `POST /Notification/{id}/read`
+
+Đánh dấu 1 thông báo đã đọc.
+
+**Response 200:**
+
+```json
+{
+  "Message": "Notification marked as read"
+}
+```
+
+**Response 404:** Thông báo không tồn tại hoặc đã được đọc.
+
+---
+
+### 4. `POST /Notification/read-all`
+
+Đánh dấu tất cả thông báo đã đọc. Trả về số lượng đã đánh dấu.
+
+**Response 200:**
+
+```json
+{
+  "Data": 5
+}
+```
+
+---
+
+### SignalR Hub: `/hubs/notification`
+
+Kết nối WebSocket để nhận thông báo real-time.
+
+**Connection:** `ws://host/hubs/notification?access_token={jwt_token}`
+
+**Events nhận từ server:**
+
+| Method                | Data                                      | Mô tả         |
+| --------------------- | ----------------------------------------- | ------------- |
+| `ReceiveNotification` | `{ Id, Title, Message, Type, CreatedAt }` | Thông báo mới |
+
+---
+
+### Auto-Notification Events
+
+Hệ thống tự động gửi thông báo (notification + SignalR push) trong các trường hợp sau:
+
+| Sự kiện | Title | Message | Type | Trigger |
+| ------- | ----- | ------- | ---- | ------- |
+| Tạo payment (Pending) | Thanh toán đang chờ xử lý | Đơn thanh toán gói {PlanName} ({Amount} VNĐ) đã được tạo và đang chờ xử lý. | `payment` | User tạo payment mới |
+| Thanh toán thành công (VNPay) | Thanh toán thành công | Thanh toán của bạn đã được xác nhận thành công. Gói subscription đã được kích hoạt! | `payment` | VNPay IPN/Return callback success |
+| Thanh toán thất bại (VNPay) | Thanh toán thất bại | Thanh toán của bạn không thành công. Vui lòng thử lại hoặc liên hệ hỗ trợ. | `payment` | VNPay IPN/Return callback fail |
+| Nâng cấp role (Subscription) | Nâng cấp tài khoản thành công | Tài khoản của bạn đã được nâng cấp lên {RoleGranted} với gói {PlanName}. | `role_update` | Tạo subscription thành công |
+| Subscription hết hạn | Subscription hết hạn | Gói subscription của bạn đã hết hạn. Tài khoản đã được chuyển về gói miễn phí. | `subscription` | Background job phát hiện subscription expired |
+| Admin duyệt payment | Payment đã được duyệt | Payment cho gói {PlanName} đã được admin duyệt thành công. | `payment` | Admin approve payment |
+| Admin từ chối payment | Payment bị từ chối | Payment cho gói {PlanName} đã bị admin từ chối. | `payment` | Admin reject payment |
+| Admin thay đổi role | Vai trò đã được thay đổi | Vai trò của bạn đã được thay đổi thành {NewRole}. | `role_update` | Admin set role |
+| Admin cập nhật payment status | Trạng thái payment đã thay đổi | Trạng thái payment đã được cập nhật thành {NewStatus}. | `payment` | Admin update payment status |
+| Auto-cancel payment quá hạn | Payment đã bị hủy | Payment của bạn đã bị tự động hủy do quá hạn chờ thanh toán. | `payment` | Background job / Admin cancel expired |
+
+---�📌 Summary Table
 
 | #   | Endpoint                                       | Method | Auth | Desc                           |
 | --- | ---------------------------------------------- | ------ | ---- | ------------------------------ |
@@ -1844,13 +2461,54 @@ GET /Recommendation/albums/{userId}?topN=10
 | 41  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích    |
 | 42  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user      |
 | 43  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi   |
+| 44  | `/Interaction/record-play`                     | POST   | ✅   | Ghi nhận lượt nghe bài hát     |
 | -   | **GENRE**                                      |        |      |                                |
-| 44  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại                |
-| 45  | `/Music/genre`                                 | POST   | ✅   | Tạo thể loại                   |
+| 45  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại                |
+| 46  | `/Music/genre`                                 | POST   | 🔑   | Tạo thể loại                   |
+| 47  | `/Music/genre/{genreId}`                       | PUT    | 🔑   | Cập nhật thể loại              |
+| 48  | `/Music/genre/{genreId}`                       | DELETE | 🔑   | Xóa thể loại                   |
 | -   | **RECOMMENDATION**                             |        |      |                                |
-| 46  | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát                |
-| 47  | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                  |
+| 49  | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát                |
+| 50  | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                  |
+| -   | **PAYMENT**                                    |        |      |                                |
+| 51  | `/Payment/create`                              | POST   | ✅   | Tạo thanh toán VNPay           |
+| 52  | `/Payment/vnpay-return`                        | GET    | ❌   | VNPay redirect → cấp quyền     |
+| 53  | `/Payment/vnpay-ipn`                           | GET    | ❌   | VNPay IPN (không sử dụng)      |
+| 54  | `/Payment/history`                             | GET    | ✅   | Lịch sử thanh toán             |
+| 55  | `/Payment/{paymentId}`                         | GET    | ✅   | Chi tiết giao dịch             |
+| -   | **SUBSCRIPTION**                               |        |      |                                |
+| 56  | `/Subscription/plans`                          | GET    | ❌   | Danh sách gói subscription     |
+| 57  | `/Subscription/active`                         | GET    | ✅   | Subscription đang hoạt động    |
+| 58  | `/Subscription/history`                        | GET    | ✅   | Lịch sử subscription           |
+| 59  | `/Subscription/features`                       | GET    | ✅   | Toàn bộ quyền/feature user     |
+| 60  | `/Subscription/features/can-upload`            | GET    | ✅   | Check quyền upload             |
+| 61  | `/Subscription/features/can-schedule`          | GET    | ✅   | Check quyền lên lịch           |
+| 62  | `/Subscription/features/has-analytics`         | GET    | ✅   | Check analytics nâng cao       |
+| -   | **ADMIN**                                      |        |      |                                |
+| 63  | `/Admin/dashboard`                             | GET    | 🔑   | Thống kê dashboard             |
+| 64  | `/Admin/users`                                 | GET    | 🔑   | Danh sách users                |
+| 65  | `/Admin/users/{userId}/toggle-ban`             | POST   | 🔑   | Ban/unban user                 |
+| 66  | `/Admin/artists`                               | GET    | 🔑   | Danh sách artists              |
+| 67  | `/Admin/songs`                                 | GET    | 🔑   | Danh sách bài hát              |
+| 68  | `/Admin/songs/{songId}`                        | DELETE | 🔑   | Xóa bài hát (force)            |
+| 69  | `/Admin/subscriptions`                         | GET    | 🔑   | Danh sách subscriptions        |
+| 70  | `/Admin/payments`                              | GET    | 🔑   | Danh sách payments             |
+| 71  | `/Admin/payments/pending`                      | GET    | 🔑   | Payments chờ duyệt             |
+| 72  | `/Admin/payments/{paymentId}/approve`          | POST   | 🔑   | Duyệt payment                  |
+| 73  | `/Admin/payments/{paymentId}/reject`           | POST   | 🔑   | Từ chối payment                |
+| -   | **ADMIN (MỚI)**                                |        |      |                                |
+| 74  | `/Admin/users/{userId}/set-role`               | POST   | 🔑   | Thay đổi role user             |
+| 75  | `/Admin/payments/{paymentId}/status`           | PUT    | 🔑   | Cập nhật trạng thái payment    |
+| 76  | `/Admin/payments/cancel-expired`               | POST   | 🔑   | Hủy payment quá hạn            |
+| 77  | `/Admin/notifications/send`                    | POST   | 🔑   | Gửi thông báo cho user         |
+| -   | **NOTIFICATION**                               |        |      |                                |
+| 78  | `/Notification`                                | GET    | ✅   | Danh sách thông báo            |
+| 79  | `/Notification/unread-count`                   | GET    | ✅   | Đếm thông báo chưa đọc         |
+| 80  | `/Notification/{id}/read`                      | POST   | ✅   | Đánh dấu đã đọc                |
+| 81  | `/Notification/read-all`                       | POST   | ✅   | Đánh dấu tất cả đã đọc         |
+
+> 🔑 = Yêu cầu role **Admin**
 
 ---
 
-**Total: 9 Auth + 3 User + 2 Artist + 3 File + 30 Feature = 47 Endpoints** ✅
+**Total: 9 Auth + 3 User + 2 Artist + 3 File + 31 Feature + 5 Payment + 7 Subscription + 2 Genre (Admin) + 15 Admin + 4 Notification = 81 Endpoints** ✅

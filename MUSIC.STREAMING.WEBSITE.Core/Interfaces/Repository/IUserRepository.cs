@@ -59,4 +59,14 @@ public interface IUserRepository : IBaseRepository<User>
     /// <param name="userId">ID của người dùng</param>
     /// <returns>Danh sách thể loại yêu thích</returns>
     Task<IEnumerable<GenreDto>> GetUserFavoriteGenresAsync(Guid userId);
+
+    /// <summary>
+    /// Lấy thống kê cho một artist: follower count, song count, total likes, total listens
+    /// </summary>
+    Task<ArtistStatsDto> GetArtistStatsAsync(Guid artistId);
+
+    /// <summary>
+    /// Lấy thống kê cho nhiều artists cùng lúc
+    /// </summary>
+    Task<Dictionary<Guid, ArtistStatsDto>> GetArtistsStatsBatchAsync(IEnumerable<Guid> artistIds);
 }

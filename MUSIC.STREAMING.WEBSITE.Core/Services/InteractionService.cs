@@ -14,12 +14,14 @@ public class InteractionService : IInteractionService
     private readonly IInteractionRepository _interactionRepo;
     private readonly IBaseRepository<Playlist> _playlistRepo;
     private readonly IConnectionMultiplexer _redis;
+    private readonly IUserRepository _userRepo;
 
-    public InteractionService(IInteractionRepository interactionRepo, IBaseRepository<Playlist> playlistRepo, IConnectionMultiplexer redis)
+    public InteractionService(IInteractionRepository interactionRepo, IBaseRepository<Playlist> playlistRepo, IConnectionMultiplexer redis, IUserRepository userRepo)
     {
         _interactionRepo = interactionRepo;
         _playlistRepo = playlistRepo;
         _redis = redis;
+        _userRepo = userRepo;
     }
 
     /// <summary>
@@ -112,14 +114,25 @@ public class InteractionService : IInteractionService
     {
         var result = await _interactionRepo.GetFollowingsAsync(userId, pageIndex, pageSize);
 
-        var dtos = result.Data.Select(u => new ArtistDto
+        var artistIds = result.Data.Select(u => u.UserId).ToList();
+        var statsMap = await _userRepo.GetArtistsStatsBatchAsync(artistIds);
+
+        var dtos = result.Data.Select(u =>
         {
-            UserId = u.UserId,
-            FullName = u.FullName ?? u.Username,
-            Avatar = u.Avatar,
-            Banner = u.Banner,
-            Bio = u.Bio,
-            ArtistType = u.ArtistType
+            statsMap.TryGetValue(u.UserId, out var stats);
+            return new ArtistDto
+            {
+                UserId = u.UserId,
+                FullName = u.FullName ?? u.Username,
+                Avatar = u.Avatar,
+                Banner = u.Banner,
+                Bio = u.Bio,
+                ArtistType = u.ArtistType,
+                FollowerCount = stats?.FollowerCount ?? 0,
+                SongCount = stats?.SongCount ?? 0,
+                TotalLikes = stats?.TotalLikes ?? 0,
+                TotalListens = stats?.TotalListens ?? 0
+            };
         });
 
         return new PagingResult<ArtistDto>
@@ -192,6 +205,18 @@ public class InteractionService : IInteractionService
         {
             return await _interactionRepo.GetPlaylistDetailsAsync(playlistId, pageIndex, pageSize);
         }
+    }
+
+    public async Task<Result> RecordPlayAsync(Guid userId, RecordPlayDto dto)
+    {
+        if (dto.SongId == Guid.Empty)
+            return Result.Failure("SongId không hợp lệ.");
+
+        if (dto.DurationListened < 0)
+            return Result.Failure("DurationListened không hợp lệ.");
+
+        await _interactionRepo.RecordPlayAsync(userId, dto.SongId, dto.DurationListened, dto.Completed, dto.Source);
+        return Result.Success("Đã ghi nhận lượt nghe");
     }
 
     public async Task RemoveSongFromAlbumAsync(Guid userId, Guid albumId, Guid songId)

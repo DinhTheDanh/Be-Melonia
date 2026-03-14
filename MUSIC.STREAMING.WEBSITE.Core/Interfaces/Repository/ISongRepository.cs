@@ -50,7 +50,7 @@ public interface ISongRepository : IBaseRepository<Song>
     /// <param name="pageIndex">Chỉ số trang</param>
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Danh sách bài hát theo từ khóa tìm kiếm</returns>
-    Task<PagingResult<SongDto>> GetAllSongsWithArtistAsync(string keyword, int pageIndex, int pageSize);
+    Task<PagingResult<SongDto>> GetAllSongsWithArtistAsync(string keyword, int pageIndex, int pageSize, Guid? genreId = null);
 
     /// <summary>
     /// Lấy danh sách bài hát theo Artist ID, có phân trang

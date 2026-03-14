@@ -38,7 +38,7 @@ public interface IMusicService
     /// <param name="pageIndex">Chỉ mục trang</param>
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Danh sách bài hát phân trang</returns>
-    Task<PagingResult<SongDto>> GetAllSongsAsync(string keyword, int pageIndex, int pageSize);
+    Task<PagingResult<SongDto>> GetAllSongsAsync(string keyword, int pageIndex, int pageSize, Guid? genreId = null);
 
     /// <summary>
     /// Lấy danh sách bài hát của nghệ sĩ với phân trang
@@ -70,6 +70,21 @@ public interface IMusicService
     /// <param name="dto">DTO tạo thể loại</param>
     /// <returns></returns>
     Task<Genre> CreateGenreAsync(CreateGenreDto dto);
+
+    /// <summary>
+    /// Cập nhật thể loại âm nhạc
+    /// </summary>
+    /// <param name="genreId">ID thể loại</param>
+    /// <param name="dto">DTO cập nhật thể loại</param>
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> UpdateGenreAsync(Guid genreId, UpdateGenreDto dto);
+
+    /// <summary>
+    /// Xóa thể loại âm nhạc
+    /// </summary>
+    /// <param name="genreId">ID thể loại</param>
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> DeleteGenreAsync(Guid genreId);
 
     /// <summary>
     /// Check file trùng

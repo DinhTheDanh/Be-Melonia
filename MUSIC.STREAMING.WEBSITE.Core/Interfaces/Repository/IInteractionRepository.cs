@@ -75,6 +75,16 @@ public interface IInteractionRepository
     Task<PlaylistDetailsDto?> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize);
 
     /// <summary>
+    /// Ghi nhận lượt nghe bài hát: tăng play_count trong user_song_stats + thêm listening_history
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <param name="songId">ID bài hát</param>
+    /// <param name="durationListened">Thời gian nghe (giây)</param>
+    /// <param name="completed">Đã nghe hết bài chưa</param>
+    /// <param name="source">Nguồn phát: playlist, album, search, recommendation</param>
+    Task RecordPlayAsync(Guid userId, Guid songId, int durationListened, bool completed, string? source);
+
+    /// <summary>
     /// Xóa bài hát khỏi album
     /// </summary>
     /// <param name="userId">ID người dùng (artist/admin)</param>

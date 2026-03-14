@@ -94,6 +94,10 @@ public class BaseRepository<T> : IBaseRepository<T> where T : class
             return tableAttr.Name;
         }
 
-        return type.Name.ToLower() + "s";
+        // PascalCase -> snake_case + plural
+        var name = string.Concat(type.Name.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
+        if (!name.EndsWith("s"))
+            name += "s";
+        return name;
     }
 }

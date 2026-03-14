@@ -15,6 +15,8 @@ public class SongDto
 
     public string ArtistNames { get; set; }
     public List<Guid>? ArtistIds { get; set; } = new();
+    public int LikeCount { get; set; }
+    public int ListenCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -46,6 +48,10 @@ public class ArtistDto
     public string? Banner { get; set; }
     public string Bio { get; set; }
     public string? ArtistType { get; set; }
+    public int FollowerCount { get; set; }
+    public int SongCount { get; set; }
+    public int TotalLikes { get; set; }
+    public int TotalListens { get; set; }
 }
 
 public class PlaylistDto
@@ -81,5 +87,22 @@ public class PlaylistDetailsDto
 {
     public PlaylistInfoDto? Playlist { get; set; }
     public PagingResult<SongDto>? Songs { get; set; }
+}
+
+public class ArtistStatsDto
+{
+    public Guid ArtistId { get; set; }
+    public int FollowerCount { get; set; }
+    public int SongCount { get; set; }
+    public int TotalLikes { get; set; }
+    public int TotalListens { get; set; }
+}
+
+public class RecordPlayDto
+{
+    public Guid SongId { get; set; }
+    public int DurationListened { get; set; }
+    public bool Completed { get; set; }
+    public string? Source { get; set; }
 }
 

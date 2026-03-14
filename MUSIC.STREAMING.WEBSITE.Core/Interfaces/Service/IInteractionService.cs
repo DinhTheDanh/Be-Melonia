@@ -96,6 +96,14 @@ public interface IInteractionService
     Task<PlaylistDetailsDto?> GetPlaylistDetailsAsync(Guid playlistId, int pageIndex, int pageSize);
 
     /// <summary>
+    /// Ghi nhận lượt nghe bài hát (play count + listening history)
+    /// </summary>
+    /// <param name="userId">ID người dùng</param>
+    /// <param name="dto">Dữ liệu lượt nghe</param>
+    /// <returns>Kết quả xử lý</returns>
+    Task<Result> RecordPlayAsync(Guid userId, RecordPlayDto dto);
+
+    /// <summary>
     /// Xóa bài hát khỏi album
     /// </summary>
     /// <param name="userId">ID người dùng (artist/admin)</param>

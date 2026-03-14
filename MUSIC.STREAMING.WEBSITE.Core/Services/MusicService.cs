@@ -102,9 +102,9 @@ public class MusicService : IMusicService
     }
 
 
-    public async Task<PagingResult<SongDto>> GetAllSongsAsync(string keyword, int pageIndex, int pageSize)
+    public async Task<PagingResult<SongDto>> GetAllSongsAsync(string keyword, int pageIndex, int pageSize, Guid? genreId = null)
     {
-        return await _songRepo.GetAllSongsWithArtistAsync(keyword, pageIndex, pageSize);
+        return await _songRepo.GetAllSongsWithArtistAsync(keyword, pageIndex, pageSize, genreId);
     }
     public async Task<PagingResult<SongDto>> GetSongsByArtistAsync(Guid artistId, int pageIndex, int pageSize)
     {
@@ -157,6 +157,39 @@ public class MusicService : IMusicService
         try { await _redis.GetDatabase().KeyDeleteAsync("genres:all"); } catch (RedisException) { }
 
         return genre;
+    }
+
+    public async Task<Result> UpdateGenreAsync(Guid genreId, UpdateGenreDto dto)
+    {
+        var genre = await _genreRepo.GetByIdAsync(genreId);
+        if (genre == null)
+            return Result.NotFound("Thể loại không tồn tại");
+
+        if (!string.IsNullOrEmpty(dto.Name))
+            genre.Name = dto.Name;
+        if (dto.ImageUrl != null)
+            genre.ImageUrl = dto.ImageUrl;
+
+        await _genreRepo.UpdateAsync(genreId, genre);
+
+        // [REDIS] Xóa cache
+        try { await _redis.GetDatabase().KeyDeleteAsync("genres:all"); } catch (RedisException) { }
+
+        return Result.Success("Cập nhật thể loại thành công");
+    }
+
+    public async Task<Result> DeleteGenreAsync(Guid genreId)
+    {
+        var genre = await _genreRepo.GetByIdAsync(genreId);
+        if (genre == null)
+            return Result.NotFound("Thể loại không tồn tại");
+
+        await _genreRepo.DeleteAsync(genreId);
+
+        // [REDIS] Xóa cache
+        try { await _redis.GetDatabase().KeyDeleteAsync("genres:all"); } catch (RedisException) { }
+
+        return Result.Success("Xóa thể loại thành công");
     }
 
     public async Task<Song> CreateSongAsync(Guid artistId, CreateSongDto dto)
