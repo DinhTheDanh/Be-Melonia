@@ -72,3 +72,5 @@
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/Pipelines.Sockets.Unofficial.dll
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/StackExchange.Redis.dll
 /Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/System.IO.Hashing.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/Microsoft.Extensions.Configuration.dll
+/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/bin/Debug/net8.0/Microsoft.Extensions.Configuration.Binder.dll

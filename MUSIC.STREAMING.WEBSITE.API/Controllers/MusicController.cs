@@ -22,9 +22,9 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         }
 
         [HttpGet("songs")]
-        public async Task<IActionResult> GetAllSongs([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAllSongs([FromQuery] string? keyword, [FromQuery] Guid? genreId, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _musicService.GetAllSongsAsync(keyword ?? "", pageIndex, pageSize);
+            var result = await _musicService.GetAllSongsAsync(keyword ?? "", pageIndex, pageSize, genreId);
             return Ok(result);
         }
 
@@ -86,8 +86,8 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("genre")]
-        // [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateGenre([FromBody] CreateGenreDto dto)
         {
             try
@@ -99,6 +99,22 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             {
                 return BadRequest(new { Message = ex.Message });
             }
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("genre/{genreId}")]
+        public async Task<IActionResult> UpdateGenre(Guid genreId, [FromBody] UpdateGenreDto dto)
+        {
+            var result = await _musicService.UpdateGenreAsync(genreId, dto);
+            return result.ToActionResult();
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("genre/{genreId}")]
+        public async Task<IActionResult> DeleteGenre(Guid genreId)
+        {
+            var result = await _musicService.DeleteGenreAsync(genreId);
+            return result.ToActionResult();
         }
 
         [Authorize]

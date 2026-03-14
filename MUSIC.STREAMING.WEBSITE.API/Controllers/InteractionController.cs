@@ -192,5 +192,24 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Ghi nhận lượt nghe bài hát (play count + listening history)
+        /// Frontend gọi khi user bắt đầu nghe hoặc nghe xong 1 bài
+        /// </summary>
+        [HttpPost("record-play")]
+        public async Task<IActionResult> RecordPlay([FromBody] RecordPlayDto dto)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
+                var result = await _interactionService.RecordPlayAsync(userId, dto);
+                return result.ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }

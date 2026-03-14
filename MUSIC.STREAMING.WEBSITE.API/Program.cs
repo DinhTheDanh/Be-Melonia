@@ -12,6 +12,9 @@ using MySqlConnector;
 using MUSIC.STREAMING.WEBSITE.Infrastructure;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
+using MUSIC.STREAMING.WEBSITE.API;
+using MUSIC.STREAMING.WEBSITE.API.Hubs;
+using MUSIC.STREAMING.WEBSITE.API.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +34,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
 // Cấu hình Dommel: Tự động biến đổi PascalCase -> snake_case
+DommelMapper.SetTableNameResolver(new SnakeCaseTableNameResolver());
 DommelMapper.SetColumnNameResolver(new SnakeCaseColumnNameResolver());
 DommelMapper.SetKeyPropertyResolver(new DefaultKeyPropertyResolver());
 // Database
@@ -56,6 +60,29 @@ builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 // Recommendation
 builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
+// Payment & Subscription
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+builder.Services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
+builder.Services.AddScoped<IVnPayService, VnPayService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IFeatureAuthorizationService, FeatureAuthorizationService>();
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+
+// Notification
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationHubService, NotificationHubService>();
+
+// SignalR
+builder.Services.AddSignalR();
+
+// Background services
+builder.Services.AddHostedService<SubscriptionExpiryBackgroundService>();
+builder.Services.AddHostedService<PaymentExpiryBackgroundService>();
 
 // Cấu hình JWT 
 // Lấy Key từ appsettings.json
@@ -86,11 +113,21 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
+            // Support JWT from cookie
             var token = context.Request.Cookies["jwt"];
             if (!string.IsNullOrEmpty(token))
             {
                 context.Token = token;
             }
+
+            // Support JWT from SignalR query string
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+
             return Task.CompletedTask;
         }
     };
@@ -165,5 +202,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();

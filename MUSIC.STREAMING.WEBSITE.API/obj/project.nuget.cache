@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "8qjArpOLKUY=",
+  "dgSpecHash": "53pwLZSrRKA=",
   "success": true,
   "projectFilePath": "/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/MUSIC.STREAMING.WEBSITE.API.csproj",
   "expectedPackageFiles": [
@@ -20,12 +20,14 @@
     "/Users/dinhthedanh/.nuget/packages/microsoft.aspnetcore.openapi/8.0.22/microsoft.aspnetcore.openapi.8.0.22.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.aspnetcore.webutilities/2.3.0/microsoft.aspnetcore.webutilities.2.3.0.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.apidescription.server/6.0.5/microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512",
-    "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.configuration.abstractions/10.0.1/microsoft.extensions.configuration.abstractions.10.0.1.nupkg.sha512",
+    "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.configuration/10.0.3/microsoft.extensions.configuration.10.0.3.nupkg.sha512",
+    "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.configuration.abstractions/10.0.3/microsoft.extensions.configuration.abstractions.10.0.3.nupkg.sha512",
+    "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.configuration.binder/10.0.3/microsoft.extensions.configuration.binder.10.0.3.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/8.0.2/microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.logging.abstractions/8.0.2/microsoft.extensions.logging.abstractions.8.0.2.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.objectpool/8.0.11/microsoft.extensions.objectpool.8.0.11.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.options/8.0.2/microsoft.extensions.options.8.0.2.nupkg.sha512",
-    "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.primitives/10.0.1/microsoft.extensions.primitives.10.0.1.nupkg.sha512",
+    "/Users/dinhthedanh/.nuget/packages/microsoft.extensions.primitives/10.0.3/microsoft.extensions.primitives.10.0.3.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.identitymodel.abstractions/8.15.0/microsoft.identitymodel.abstractions.8.15.0.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.identitymodel.jsonwebtokens/8.15.0/microsoft.identitymodel.jsonwebtokens.8.15.0.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/microsoft.identitymodel.logging/8.15.0/microsoft.identitymodel.logging.8.15.0.nupkg.sha512",
@@ -113,5 +115,18 @@
     "/Users/dinhthedanh/.nuget/packages/system.threading.tasks/4.3.0/system.threading.tasks.4.3.0.nupkg.sha512",
     "/Users/dinhthedanh/.nuget/packages/system.threading.threadpool/4.3.0/system.threading.threadpool.4.3.0.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "message": "Package 'MimeKit' 2.8.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-g7hc-96xr-gvvx",
+      "projectPath": "/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/MUSIC.STREAMING.WEBSITE.API.csproj",
+      "warningLevel": 1,
+      "filePath": "/Users/dinhthedanh/Documents/workspace/MUSIC.STREAMING.WEBSITE/MUSIC.STREAMING.WEBSITE.API/MUSIC.STREAMING.WEBSITE.API.csproj",
+      "libraryId": "MimeKit",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
 }
