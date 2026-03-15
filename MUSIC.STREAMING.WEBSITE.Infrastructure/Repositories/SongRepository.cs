@@ -201,10 +201,11 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
                    (SELECT COUNT(*) FROM user_likes ul WHERE ul.song_id = s.song_id) as LikeCount,
                    (SELECT COALESCE(SUM(uss.play_count), 0) FROM user_song_stats uss WHERE uss.song_id = s.song_id) as ListenCount
             FROM songs s
-            JOIN song_artists sa ON s.song_id = sa.song_id
-            LEFT JOIN users u ON sa.artist_id = u.user_id
+            JOIN song_artists sa_filter ON s.song_id = sa_filter.song_id
+            LEFT JOIN song_artists sa_all ON s.song_id = sa_all.song_id
+            LEFT JOIN users u ON sa_all.artist_id = u.user_id
             LEFT JOIN albums al ON s.album_id = al.album_id
-            WHERE sa.artist_id = @UserId 
+            WHERE sa_filter.artist_id = @UserId 
             AND (s.title LIKE @Keyword OR @Keyword = '')
             GROUP BY s.song_id, s.title, s.thumbnail, s.file_url, s.duration, s.created_at, s.updated_at, s.album_id, al.title
             ORDER BY s.created_at DESC
@@ -237,6 +238,35 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
     {
         var sql = "DELETE FROM song_genres WHERE song_id = @SongId";
         await _connection.ExecuteAsync(sql, new { SongId = songId });
+    }
+
+    public async Task<int> DeleteSongWithDependenciesAsync(Guid songId)
+    {
+        if (_connection.State != ConnectionState.Open)
+        {
+            _connection.Open();
+        }
+
+        using var transaction = _connection.BeginTransaction();
+        try
+        {
+            await _connection.ExecuteAsync("DELETE FROM listening_history WHERE song_id = @SongId", new { SongId = songId }, transaction);
+            await _connection.ExecuteAsync("DELETE FROM user_song_stats WHERE song_id = @SongId", new { SongId = songId }, transaction);
+            await _connection.ExecuteAsync("DELETE FROM user_likes WHERE song_id = @SongId", new { SongId = songId }, transaction);
+            await _connection.ExecuteAsync("DELETE FROM playlist_songs WHERE song_id = @SongId", new { SongId = songId }, transaction);
+            await _connection.ExecuteAsync("DELETE FROM song_artists WHERE song_id = @SongId", new { SongId = songId }, transaction);
+            await _connection.ExecuteAsync("DELETE FROM song_genres WHERE song_id = @SongId", new { SongId = songId }, transaction);
+
+            var affectedRows = await _connection.ExecuteAsync("DELETE FROM songs WHERE song_id = @SongId", new { SongId = songId }, transaction);
+
+            transaction.Commit();
+            return affectedRows;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public async Task<List<SongDto>> GetSongsByIdsAsync(List<Guid> songIds)

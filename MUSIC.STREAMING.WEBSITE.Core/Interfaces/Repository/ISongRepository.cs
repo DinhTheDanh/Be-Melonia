@@ -89,6 +89,13 @@ public interface ISongRepository : IBaseRepository<Song>
     Task RemoveGenresFromSongAsync(Guid songId);
 
     /// <summary>
+    /// Xóa bài hát và toàn bộ dữ liệu phụ thuộc (likes, stats, history, playlist links, artist links, genre links)
+    /// </summary>
+    /// <param name="songId">ID bài hát</param>
+    /// <returns>Số dòng xóa ở bảng songs</returns>
+    Task<int> DeleteSongWithDependenciesAsync(Guid songId);
+
+    /// <summary>
     /// Lấy danh sách bài hát theo danh sách ID
     /// </summary>
     /// <param name="songIds">Danh sách ID bài hát</param>

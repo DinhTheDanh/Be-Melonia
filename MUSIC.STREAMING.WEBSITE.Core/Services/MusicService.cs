@@ -321,7 +321,7 @@ public class MusicService : IMusicService
 
         var albumId = song.AlbumId;
 
-        await _songRepo.DeleteAsync(songId);
+        await _songRepo.DeleteSongWithDependenciesAsync(songId);
 
         if (albumId != Guid.Empty)
         {
