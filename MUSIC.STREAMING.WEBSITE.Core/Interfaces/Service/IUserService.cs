@@ -45,4 +45,14 @@ public interface IUserService
     /// <param name="userId">ID người dùng</param>
     /// <returns>Danh sách thể loại yêu thích</returns>
     Task<IEnumerable<GenreDto>> GetUserFavoriteGenresAsync(Guid userId);
+
+    /// <summary>
+    /// Lấy dữ liệu dashboard analytics nâng cao cho artist
+    /// </summary>
+    Task<ArtistAnalyticsDashboardDto> GetArtistAnalyticsDashboardAsync(Guid artistId, int days);
+
+    /// <summary>
+    /// Lấy top songs analytics của artist theo khoảng thời gian
+    /// </summary>
+    Task<PagingResult<ArtistTopSongDto>> GetArtistTopSongsAsync(Guid artistId, int days, int pageIndex, int pageSize);
 }

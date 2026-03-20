@@ -98,6 +98,46 @@ public class ArtistStatsDto
     public int TotalListens { get; set; }
 }
 
+public class ArtistAnalyticsSummaryDto
+{
+    public int TotalFollowers { get; set; }
+    public int TotalListens { get; set; }
+    public int TotalLikes { get; set; }
+    public int TotalSongs { get; set; }
+}
+
+public class ArtistTrendPointDto
+{
+    public string Date { get; set; } = string.Empty;
+    public int Followers { get; set; }
+    public int Listens { get; set; }
+    public int Likes { get; set; }
+}
+
+public class ArtistAnalyticsDashboardDto
+{
+    public ArtistAnalyticsSummaryDto Summary { get; set; } = new();
+    public List<ArtistTrendPointDto> Trends { get; set; } = new();
+}
+
+public class ArtistDailyIncrementDto
+{
+    public DateTime Date { get; set; }
+    public int FollowersDelta { get; set; }
+    public int ListensDelta { get; set; }
+    public int LikesDelta { get; set; }
+}
+
+public class ArtistTopSongDto
+{
+    public Guid SongId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Thumbnail { get; set; }
+    public int Listens { get; set; }
+    public int Likes { get; set; }
+    public int FollowersGained { get; set; }
+}
+
 public class RecordPlayDto
 {
     public Guid SongId { get; set; }

@@ -72,9 +72,9 @@ public class UserService : IUserService
         await _userRepository.AddUserFavoriteGenresAsync(userId, genreIds);
     }
 
-    public async Task<PagingResult<ArtistDto>> GetArtistsAsync(string keyword, int pageIndex, int pageSize)
+    public async Task<PagingResult<ArtistDto>> GetArtistsAsync(string? keyword, int pageIndex, int pageSize)
     {
-        var result = await _userRepository.GetArtistsPagingAsync(keyword, pageIndex, pageSize);
+        var result = await _userRepository.GetArtistsPagingAsync(keyword ?? string.Empty, pageIndex, pageSize);
 
         var artistIds = result.Data.Select(u => u.UserId).ToList();
         var statsMap = await _userRepository.GetArtistsStatsBatchAsync(artistIds);
@@ -110,5 +110,88 @@ public class UserService : IUserService
     public async Task<IEnumerable<GenreDto>> GetUserFavoriteGenresAsync(Guid userId)
     {
         return await _userRepository.GetUserFavoriteGenresAsync(userId);
+    }
+
+    public async Task<ArtistAnalyticsDashboardDto> GetArtistAnalyticsDashboardAsync(Guid artistId, int days)
+    {
+        var normalizedDays = NormalizeAnalyticsDays(days);
+
+        var toDate = DateTime.Today;
+        var fromDate = toDate.AddDays(-(normalizedDays - 1));
+        var toDateExclusive = toDate.AddDays(1);
+
+        var stats = await _userRepository.GetArtistStatsAsync(artistId);
+        var increments = (await _userRepository.GetArtistDailyIncrementsAsync(artistId, fromDate, toDateExclusive)).ToList();
+
+        var rangeFollowerDelta = increments.Sum(x => x.FollowersDelta);
+        var rangeListenDelta = increments.Sum(x => x.ListensDelta);
+        var rangeLikeDelta = increments.Sum(x => x.LikesDelta);
+
+        var currentFollowers = Math.Max(0, stats.FollowerCount - rangeFollowerDelta);
+        var currentListens = Math.Max(0, stats.TotalListens - rangeListenDelta);
+        var currentLikes = Math.Max(0, stats.TotalLikes - rangeLikeDelta);
+
+        var incrementsByDate = increments
+            .GroupBy(x => x.Date.Date)
+            .ToDictionary(
+                g => g.Key,
+                g => new
+                {
+                    Followers = g.Sum(v => v.FollowersDelta),
+                    Listens = g.Sum(v => v.ListensDelta),
+                    Likes = g.Sum(v => v.LikesDelta)
+                });
+
+        var trends = new List<ArtistTrendPointDto>();
+        for (var i = 0; i < normalizedDays; i++)
+        {
+            var date = fromDate.AddDays(i).Date;
+
+            if (incrementsByDate.TryGetValue(date, out var delta))
+            {
+                currentFollowers += delta.Followers;
+                currentListens += delta.Listens;
+                currentLikes += delta.Likes;
+            }
+
+            trends.Add(new ArtistTrendPointDto
+            {
+                Date = date.ToString("yyyy-MM-dd"),
+                Followers = currentFollowers,
+                Listens = currentListens,
+                Likes = currentLikes
+            });
+        }
+
+        return new ArtistAnalyticsDashboardDto
+        {
+            Summary = new ArtistAnalyticsSummaryDto
+            {
+                TotalFollowers = stats.FollowerCount,
+                TotalListens = stats.TotalListens,
+                TotalLikes = stats.TotalLikes,
+                TotalSongs = stats.SongCount
+            },
+            Trends = trends
+        };
+    }
+
+    public async Task<PagingResult<ArtistTopSongDto>> GetArtistTopSongsAsync(Guid artistId, int days, int pageIndex, int pageSize)
+    {
+        if (pageIndex < 1) pageIndex = 1;
+        if (pageSize < 1) pageSize = 10;
+
+        var normalizedDays = NormalizeAnalyticsDays(days);
+
+        var toDate = DateTime.Today;
+        var fromDate = toDate.AddDays(-(normalizedDays - 1));
+        var toDateExclusive = toDate.AddDays(1);
+
+        return await _userRepository.GetArtistTopSongsAsync(artistId, fromDate, toDateExclusive, pageIndex, pageSize);
+    }
+
+    private static int NormalizeAnalyticsDays(int days)
+    {
+        return days == 7 || days == 30 || days == 90 ? days : 30;
     }
 }

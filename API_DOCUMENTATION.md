@@ -490,6 +490,101 @@ GET /Artist/{artistId}/songs?pageIndex=1&pageSize=10
 
 ---
 
+### 14.5. Get Artist Analytics Dashboard ✅
+
+```
+GET /Artist/analytics/dashboard?days=30
+```
+
+> Lấy dữ liệu analytics nâng cao cho **artist hiện tại** (không truyền `artistId`).
+
+**Auth:** JWT role `Artist` / `ArtistPremium` / `Admin`
+
+**Query Params:**
+
+- `days` (int, optional): chỉ nhận `7`, `30`, `90` (mặc định `30`)
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "Lấy dữ liệu dashboard thành công",
+  "Data": {
+    "Summary": {
+      "TotalFollowers": 1250,
+      "TotalListens": 98540,
+      "TotalLikes": 8430,
+      "TotalSongs": 42
+    },
+    "Trends": [
+      {
+        "Date": "2026-02-15",
+        "Followers": 1180,
+        "Listens": 91200,
+        "Likes": 7900
+      },
+      {
+        "Date": "2026-02-16",
+        "Followers": 1188,
+        "Listens": 91870,
+        "Likes": 7964
+      }
+    ]
+  }
+}
+```
+
+**Response (403 Forbidden):**
+
+```json
+{
+  "Message": "Gói hiện tại chưa hỗ trợ analytics nâng cao"
+}
+```
+
+> `Trends` là dữ liệu cumulative theo ngày để FE vẽ line chart trực tiếp.
+
+---
+
+### 14.6. Get Artist Analytics Top Songs ✅
+
+```
+GET /Artist/analytics/top-songs?days=30&pageIndex=1&pageSize=10
+```
+
+> Lấy top songs theo period cho **artist hiện tại**.
+
+**Auth:** JWT role `Artist` / `ArtistPremium` / `Admin`
+
+**Query Params:**
+
+- `days` (int, optional): `7`, `30`, `90` (mặc định `30`)
+- `pageIndex` (int, optional): mặc định `1`
+- `pageSize` (int, optional): mặc định `10`
+
+**Response (200 OK):** PagingResult\<ArtistTopSongDto\>
+
+```json
+{
+  "Data": [
+    {
+      "SongId": "guid",
+      "Title": "Song A",
+      "Thumbnail": "https://...",
+      "Listens": 23450,
+      "Likes": 2150,
+      "FollowersGained": 0
+    }
+  ],
+  "TotalRecords": 25,
+  "TotalPages": 3,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
+
+---
+
 ## 📁 FILE ENDPOINTS
 
 ### 15. Upload Image
@@ -2393,122 +2488,124 @@ Kết nối WebSocket để nhận thông báo real-time.
 
 Hệ thống tự động gửi thông báo (notification + SignalR push) trong các trường hợp sau:
 
-| Sự kiện | Title | Message | Type | Trigger |
-| ------- | ----- | ------- | ---- | ------- |
-| Tạo payment (Pending) | Thanh toán đang chờ xử lý | Đơn thanh toán gói {PlanName} ({Amount} VNĐ) đã được tạo và đang chờ xử lý. | `payment` | User tạo payment mới |
-| Thanh toán thành công (VNPay) | Thanh toán thành công | Thanh toán của bạn đã được xác nhận thành công. Gói subscription đã được kích hoạt! | `payment` | VNPay IPN/Return callback success |
-| Thanh toán thất bại (VNPay) | Thanh toán thất bại | Thanh toán của bạn không thành công. Vui lòng thử lại hoặc liên hệ hỗ trợ. | `payment` | VNPay IPN/Return callback fail |
-| Nâng cấp role (Subscription) | Nâng cấp tài khoản thành công | Tài khoản của bạn đã được nâng cấp lên {RoleGranted} với gói {PlanName}. | `role_update` | Tạo subscription thành công |
-| Subscription hết hạn | Subscription hết hạn | Gói subscription của bạn đã hết hạn. Tài khoản đã được chuyển về gói miễn phí. | `subscription` | Background job phát hiện subscription expired |
-| Admin duyệt payment | Payment đã được duyệt | Payment cho gói {PlanName} đã được admin duyệt thành công. | `payment` | Admin approve payment |
-| Admin từ chối payment | Payment bị từ chối | Payment cho gói {PlanName} đã bị admin từ chối. | `payment` | Admin reject payment |
-| Admin thay đổi role | Vai trò đã được thay đổi | Vai trò của bạn đã được thay đổi thành {NewRole}. | `role_update` | Admin set role |
-| Admin cập nhật payment status | Trạng thái payment đã thay đổi | Trạng thái payment đã được cập nhật thành {NewStatus}. | `payment` | Admin update payment status |
-| Auto-cancel payment quá hạn | Payment đã bị hủy | Payment của bạn đã bị tự động hủy do quá hạn chờ thanh toán. | `payment` | Background job / Admin cancel expired |
+| Sự kiện                       | Title                          | Message                                                                             | Type           | Trigger                                       |
+| ----------------------------- | ------------------------------ | ----------------------------------------------------------------------------------- | -------------- | --------------------------------------------- |
+| Tạo payment (Pending)         | Thanh toán đang chờ xử lý      | Đơn thanh toán gói {PlanName} ({Amount} VNĐ) đã được tạo và đang chờ xử lý.         | `payment`      | User tạo payment mới                          |
+| Thanh toán thành công (VNPay) | Thanh toán thành công          | Thanh toán của bạn đã được xác nhận thành công. Gói subscription đã được kích hoạt! | `payment`      | VNPay IPN/Return callback success             |
+| Thanh toán thất bại (VNPay)   | Thanh toán thất bại            | Thanh toán của bạn không thành công. Vui lòng thử lại hoặc liên hệ hỗ trợ.          | `payment`      | VNPay IPN/Return callback fail                |
+| Nâng cấp role (Subscription)  | Nâng cấp tài khoản thành công  | Tài khoản của bạn đã được nâng cấp lên {RoleGranted} với gói {PlanName}.            | `role_update`  | Tạo subscription thành công                   |
+| Subscription hết hạn          | Subscription hết hạn           | Gói subscription của bạn đã hết hạn. Tài khoản đã được chuyển về gói miễn phí.      | `subscription` | Background job phát hiện subscription expired |
+| Admin duyệt payment           | Payment đã được duyệt          | Payment cho gói {PlanName} đã được admin duyệt thành công.                          | `payment`      | Admin approve payment                         |
+| Admin từ chối payment         | Payment bị từ chối             | Payment cho gói {PlanName} đã bị admin từ chối.                                     | `payment`      | Admin reject payment                          |
+| Admin thay đổi role           | Vai trò đã được thay đổi       | Vai trò của bạn đã được thay đổi thành {NewRole}.                                   | `role_update`  | Admin set role                                |
+| Admin cập nhật payment status | Trạng thái payment đã thay đổi | Trạng thái payment đã được cập nhật thành {NewStatus}.                              | `payment`      | Admin update payment status                   |
+| Auto-cancel payment quá hạn   | Payment đã bị hủy              | Payment của bạn đã bị tự động hủy do quá hạn chờ thanh toán.                        | `payment`      | Background job / Admin cancel expired         |
 
 ---�📌 Summary Table
 
-| #   | Endpoint                                       | Method | Auth | Desc                           |
-| --- | ---------------------------------------------- | ------ | ---- | ------------------------------ |
-| -   | **AUTH**                                       |        |      |                                |
-| 1   | `/Auth/login`                                  | POST   | ❌   | Đăng nhập                      |
-| 2   | `/Auth/google-login`                           | POST   | ❌   | Đăng nhập Google               |
-| 3   | `/Auth/register`                               | POST   | ❌   | Đăng ký                        |
-| 4   | `/Auth/refresh-token`                          | POST   | ❌   | Làm mới token                  |
-| 5   | `/Auth/logout`                                 | POST   | ✅   | Đăng xuất                      |
-| 6   | `/Auth/set-role`                               | POST   | ✅   | Cập nhật vai trò               |
-| 7   | `/Auth/change-password`                        | PUT    | ✅   | Đổi mật khẩu                   |
-| 8   | `/Auth/forgot-password`                        | POST   | ❌   | Quên mật khẩu                  |
-| 9   | `/Auth/reset-password`                         | POST   | ❌   | Đặt lại mật khẩu               |
-| -   | **USER**                                       |        |      |                                |
-| 10  | `/User/profile`                                | GET    | ✅   | Xem hồ sơ                      |
-| 11  | `/User/profile`                                | PUT    | ✅   | Cập nhật hồ sơ                 |
-| 12  | `/User/update-interests`                       | POST   | ✅   | Cập nhật sở thích genre        |
-| -   | **ARTIST**                                     |        |      |                                |
-| 13  | `/Artist`                                      | GET    | ❌   | Tìm kiếm nghệ sĩ               |
-| 14  | `/Artist/{id}/songs`                           | GET    | ❌   | Bài hát của nghệ sĩ            |
-| -   | **FILE**                                       |        |      |                                |
-| 15  | `/File/upload-image`                           | POST   | ❌   | Upload ảnh lên Cloudinary      |
-| 16  | `/File/upload-audio`                           | POST   | ❌   | Upload nhạc lên Cloudinary     |
-| 17  | `/File/signature`                              | GET    | ❌   | Lấy signature upload trực tiếp |
-| -   | **MUSIC (SONGS)**                              |        |      |                                |
-| 18  | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)        |
-| 19  | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình               |
-| 20  | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                    |
-| 21  | `/Music/song/{id}`                             | PUT    | ✅   | Cập nhật bài hát               |
-| 22  | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                    |
-| 23  | `/Music/check-hash/{hash}`                     | GET    | ❌   | Kiểm tra file trùng            |
-| -   | **MUSIC (ALBUMS)**                             |        |      |                                |
-| 24  | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)          |
-| 25  | `/Music/my-albums`                             | GET    | ✅   | Album của mình                 |
-| 26  | `/Music/album`                                 | POST   | ✅   | Tạo album                      |
-| 27  | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album                 |
-| 28  | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                      |
-| 29  | `/Music/album/{id}`                            | GET    | ❌   | Chi tiết album + bài hát       |
-| 30  | `/Music/album/{id}/add-song/{sid}`             | POST   | ✅   | Thêm bài hát vào album         |
-| 31  | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album         |
-| -   | **MUSIC (PLAYLISTS)**                          |        |      |                                |
-| 32  | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)       |
-| 33  | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình              |
-| 34  | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                   |
-| 35  | `/Interaction/playlist/{id}`                   | GET    | ✅   | Chi tiết playlist              |
-| 36  | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist              |
-| 37  | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                   |
-| 38  | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist      |
-| 39  | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist      |
-| -   | **LIKE / FOLLOW**                              |        |      |                                |
-| 40  | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát         |
-| 41  | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích    |
-| 42  | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user      |
-| 43  | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi   |
-| 44  | `/Interaction/record-play`                     | POST   | ✅   | Ghi nhận lượt nghe bài hát     |
-| -   | **GENRE**                                      |        |      |                                |
-| 45  | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại                |
-| 46  | `/Music/genre`                                 | POST   | 🔑   | Tạo thể loại                   |
-| 47  | `/Music/genre/{genreId}`                       | PUT    | 🔑   | Cập nhật thể loại              |
-| 48  | `/Music/genre/{genreId}`                       | DELETE | 🔑   | Xóa thể loại                   |
-| -   | **RECOMMENDATION**                             |        |      |                                |
-| 49  | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát                |
-| 50  | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                  |
-| -   | **PAYMENT**                                    |        |      |                                |
-| 51  | `/Payment/create`                              | POST   | ✅   | Tạo thanh toán VNPay           |
-| 52  | `/Payment/vnpay-return`                        | GET    | ❌   | VNPay redirect → cấp quyền     |
-| 53  | `/Payment/vnpay-ipn`                           | GET    | ❌   | VNPay IPN (không sử dụng)      |
-| 54  | `/Payment/history`                             | GET    | ✅   | Lịch sử thanh toán             |
-| 55  | `/Payment/{paymentId}`                         | GET    | ✅   | Chi tiết giao dịch             |
-| -   | **SUBSCRIPTION**                               |        |      |                                |
-| 56  | `/Subscription/plans`                          | GET    | ❌   | Danh sách gói subscription     |
-| 57  | `/Subscription/active`                         | GET    | ✅   | Subscription đang hoạt động    |
-| 58  | `/Subscription/history`                        | GET    | ✅   | Lịch sử subscription           |
-| 59  | `/Subscription/features`                       | GET    | ✅   | Toàn bộ quyền/feature user     |
-| 60  | `/Subscription/features/can-upload`            | GET    | ✅   | Check quyền upload             |
-| 61  | `/Subscription/features/can-schedule`          | GET    | ✅   | Check quyền lên lịch           |
-| 62  | `/Subscription/features/has-analytics`         | GET    | ✅   | Check analytics nâng cao       |
-| -   | **ADMIN**                                      |        |      |                                |
-| 63  | `/Admin/dashboard`                             | GET    | 🔑   | Thống kê dashboard             |
-| 64  | `/Admin/users`                                 | GET    | 🔑   | Danh sách users                |
-| 65  | `/Admin/users/{userId}/toggle-ban`             | POST   | 🔑   | Ban/unban user                 |
-| 66  | `/Admin/artists`                               | GET    | 🔑   | Danh sách artists              |
-| 67  | `/Admin/songs`                                 | GET    | 🔑   | Danh sách bài hát              |
-| 68  | `/Admin/songs/{songId}`                        | DELETE | 🔑   | Xóa bài hát (force)            |
-| 69  | `/Admin/subscriptions`                         | GET    | 🔑   | Danh sách subscriptions        |
-| 70  | `/Admin/payments`                              | GET    | 🔑   | Danh sách payments             |
-| 71  | `/Admin/payments/pending`                      | GET    | 🔑   | Payments chờ duyệt             |
-| 72  | `/Admin/payments/{paymentId}/approve`          | POST   | 🔑   | Duyệt payment                  |
-| 73  | `/Admin/payments/{paymentId}/reject`           | POST   | 🔑   | Từ chối payment                |
-| -   | **ADMIN (MỚI)**                                |        |      |                                |
-| 74  | `/Admin/users/{userId}/set-role`               | POST   | 🔑   | Thay đổi role user             |
-| 75  | `/Admin/payments/{paymentId}/status`           | PUT    | 🔑   | Cập nhật trạng thái payment    |
-| 76  | `/Admin/payments/cancel-expired`               | POST   | 🔑   | Hủy payment quá hạn            |
-| 77  | `/Admin/notifications/send`                    | POST   | 🔑   | Gửi thông báo cho user         |
-| -   | **NOTIFICATION**                               |        |      |                                |
-| 78  | `/Notification`                                | GET    | ✅   | Danh sách thông báo            |
-| 79  | `/Notification/unread-count`                   | GET    | ✅   | Đếm thông báo chưa đọc         |
-| 80  | `/Notification/{id}/read`                      | POST   | ✅   | Đánh dấu đã đọc                |
-| 81  | `/Notification/read-all`                       | POST   | ✅   | Đánh dấu tất cả đã đọc         |
+| #    | Endpoint                                       | Method | Auth | Desc                           |
+| ---- | ---------------------------------------------- | ------ | ---- | ------------------------------ |
+| -    | **AUTH**                                       |        |      |                                |
+| 1    | `/Auth/login`                                  | POST   | ❌   | Đăng nhập                      |
+| 2    | `/Auth/google-login`                           | POST   | ❌   | Đăng nhập Google               |
+| 3    | `/Auth/register`                               | POST   | ❌   | Đăng ký                        |
+| 4    | `/Auth/refresh-token`                          | POST   | ❌   | Làm mới token                  |
+| 5    | `/Auth/logout`                                 | POST   | ✅   | Đăng xuất                      |
+| 6    | `/Auth/set-role`                               | POST   | ✅   | Cập nhật vai trò               |
+| 7    | `/Auth/change-password`                        | PUT    | ✅   | Đổi mật khẩu                   |
+| 8    | `/Auth/forgot-password`                        | POST   | ❌   | Quên mật khẩu                  |
+| 9    | `/Auth/reset-password`                         | POST   | ❌   | Đặt lại mật khẩu               |
+| -    | **USER**                                       |        |      |                                |
+| 10   | `/User/profile`                                | GET    | ✅   | Xem hồ sơ                      |
+| 11   | `/User/profile`                                | PUT    | ✅   | Cập nhật hồ sơ                 |
+| 12   | `/User/update-interests`                       | POST   | ✅   | Cập nhật sở thích genre        |
+| -    | **ARTIST**                                     |        |      |                                |
+| 13   | `/Artist`                                      | GET    | ❌   | Tìm kiếm nghệ sĩ               |
+| 14   | `/Artist/{id}/songs`                           | GET    | ❌   | Bài hát của nghệ sĩ            |
+| 14.5 | `/Artist/analytics/dashboard`                  | GET    | ✅   | Dashboard analytics artist     |
+| 14.6 | `/Artist/analytics/top-songs`                  | GET    | ✅   | Top songs analytics artist     |
+| -    | **FILE**                                       |        |      |                                |
+| 15   | `/File/upload-image`                           | POST   | ❌   | Upload ảnh lên Cloudinary      |
+| 16   | `/File/upload-audio`                           | POST   | ❌   | Upload nhạc lên Cloudinary     |
+| 17   | `/File/signature`                              | GET    | ❌   | Lấy signature upload trực tiếp |
+| -    | **MUSIC (SONGS)**                              |        |      |                                |
+| 18   | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)        |
+| 19   | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình               |
+| 20   | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                    |
+| 21   | `/Music/song/{id}`                             | PUT    | ✅   | Cập nhật bài hát               |
+| 22   | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                    |
+| 23   | `/Music/check-hash/{hash}`                     | GET    | ❌   | Kiểm tra file trùng            |
+| -    | **MUSIC (ALBUMS)**                             |        |      |                                |
+| 24   | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)          |
+| 25   | `/Music/my-albums`                             | GET    | ✅   | Album của mình                 |
+| 26   | `/Music/album`                                 | POST   | ✅   | Tạo album                      |
+| 27   | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album                 |
+| 28   | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                      |
+| 29   | `/Music/album/{id}`                            | GET    | ❌   | Chi tiết album + bài hát       |
+| 30   | `/Music/album/{id}/add-song/{sid}`             | POST   | ✅   | Thêm bài hát vào album         |
+| 31   | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album         |
+| -    | **MUSIC (PLAYLISTS)**                          |        |      |                                |
+| 32   | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)       |
+| 33   | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình              |
+| 34   | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                   |
+| 35   | `/Interaction/playlist/{id}`                   | GET    | ✅   | Chi tiết playlist              |
+| 36   | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist              |
+| 37   | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                   |
+| 38   | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist      |
+| 39   | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist      |
+| -    | **LIKE / FOLLOW**                              |        |      |                                |
+| 40   | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát         |
+| 41   | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích    |
+| 42   | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user      |
+| 43   | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi   |
+| 44   | `/Interaction/record-play`                     | POST   | ✅   | Ghi nhận lượt nghe bài hát     |
+| -    | **GENRE**                                      |        |      |                                |
+| 45   | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại                |
+| 46   | `/Music/genre`                                 | POST   | 🔑   | Tạo thể loại                   |
+| 47   | `/Music/genre/{genreId}`                       | PUT    | 🔑   | Cập nhật thể loại              |
+| 48   | `/Music/genre/{genreId}`                       | DELETE | 🔑   | Xóa thể loại                   |
+| -    | **RECOMMENDATION**                             |        |      |                                |
+| 49   | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát                |
+| 50   | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                  |
+| -    | **PAYMENT**                                    |        |      |                                |
+| 51   | `/Payment/create`                              | POST   | ✅   | Tạo thanh toán VNPay           |
+| 52   | `/Payment/vnpay-return`                        | GET    | ❌   | VNPay redirect → cấp quyền     |
+| 53   | `/Payment/vnpay-ipn`                           | GET    | ❌   | VNPay IPN (không sử dụng)      |
+| 54   | `/Payment/history`                             | GET    | ✅   | Lịch sử thanh toán             |
+| 55   | `/Payment/{paymentId}`                         | GET    | ✅   | Chi tiết giao dịch             |
+| -    | **SUBSCRIPTION**                               |        |      |                                |
+| 56   | `/Subscription/plans`                          | GET    | ❌   | Danh sách gói subscription     |
+| 57   | `/Subscription/active`                         | GET    | ✅   | Subscription đang hoạt động    |
+| 58   | `/Subscription/history`                        | GET    | ✅   | Lịch sử subscription           |
+| 59   | `/Subscription/features`                       | GET    | ✅   | Toàn bộ quyền/feature user     |
+| 60   | `/Subscription/features/can-upload`            | GET    | ✅   | Check quyền upload             |
+| 61   | `/Subscription/features/can-schedule`          | GET    | ✅   | Check quyền lên lịch           |
+| 62   | `/Subscription/features/has-analytics`         | GET    | ✅   | Check analytics nâng cao       |
+| -    | **ADMIN**                                      |        |      |                                |
+| 63   | `/Admin/dashboard`                             | GET    | 🔑   | Thống kê dashboard             |
+| 64   | `/Admin/users`                                 | GET    | 🔑   | Danh sách users                |
+| 65   | `/Admin/users/{userId}/toggle-ban`             | POST   | 🔑   | Ban/unban user                 |
+| 66   | `/Admin/artists`                               | GET    | 🔑   | Danh sách artists              |
+| 67   | `/Admin/songs`                                 | GET    | 🔑   | Danh sách bài hát              |
+| 68   | `/Admin/songs/{songId}`                        | DELETE | 🔑   | Xóa bài hát (force)            |
+| 69   | `/Admin/subscriptions`                         | GET    | 🔑   | Danh sách subscriptions        |
+| 70   | `/Admin/payments`                              | GET    | 🔑   | Danh sách payments             |
+| 71   | `/Admin/payments/pending`                      | GET    | 🔑   | Payments chờ duyệt             |
+| 72   | `/Admin/payments/{paymentId}/approve`          | POST   | 🔑   | Duyệt payment                  |
+| 73   | `/Admin/payments/{paymentId}/reject`           | POST   | 🔑   | Từ chối payment                |
+| -    | **ADMIN (MỚI)**                                |        |      |                                |
+| 74   | `/Admin/users/{userId}/set-role`               | POST   | 🔑   | Thay đổi role user             |
+| 75   | `/Admin/payments/{paymentId}/status`           | PUT    | 🔑   | Cập nhật trạng thái payment    |
+| 76   | `/Admin/payments/cancel-expired`               | POST   | 🔑   | Hủy payment quá hạn            |
+| 77   | `/Admin/notifications/send`                    | POST   | 🔑   | Gửi thông báo cho user         |
+| -    | **NOTIFICATION**                               |        |      |                                |
+| 78   | `/Notification`                                | GET    | ✅   | Danh sách thông báo            |
+| 79   | `/Notification/unread-count`                   | GET    | ✅   | Đếm thông báo chưa đọc         |
+| 80   | `/Notification/{id}/read`                      | POST   | ✅   | Đánh dấu đã đọc                |
+| 81   | `/Notification/read-all`                       | POST   | ✅   | Đánh dấu tất cả đã đọc         |
 
 > 🔑 = Yêu cầu role **Admin**
 
 ---
 
-**Total: 9 Auth + 3 User + 2 Artist + 3 File + 31 Feature + 5 Payment + 7 Subscription + 2 Genre (Admin) + 15 Admin + 4 Notification = 81 Endpoints** ✅
+**Total: 9 Auth + 3 User + 4 Artist + 3 File + 31 Feature + 5 Payment + 7 Subscription + 2 Genre (Admin) + 15 Admin + 4 Notification = 83 Endpoints** ✅

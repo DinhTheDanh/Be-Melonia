@@ -111,7 +111,6 @@ public class UserRepository : BaseRepository<User>, IUserRepository
     {
         var sql = @"
             SELECT 
-                @ArtistId as ArtistId,
                 (SELECT COUNT(*) FROM user_follows WHERE following_id = @ArtistId) as FollowerCount,
                 (SELECT COUNT(DISTINCT sa.song_id) FROM song_artists sa WHERE sa.artist_id = @ArtistId) as SongCount,
                 (SELECT COUNT(*) FROM user_likes ul 
@@ -121,7 +120,16 @@ public class UserRepository : BaseRepository<User>, IUserRepository
                  JOIN song_artists sa ON uss.song_id = sa.song_id 
                  WHERE sa.artist_id = @ArtistId) as TotalListens";
 
-        return await _connection.QueryFirstAsync<Core.DTOs.ArtistStatsDto>(sql, new { ArtistId = artistId });
+        var row = await _connection.QueryFirstAsync<ArtistStatsRow>(sql, new { ArtistId = artistId });
+
+        return new Core.DTOs.ArtistStatsDto
+        {
+            ArtistId = artistId,
+            FollowerCount = row.FollowerCount,
+            SongCount = row.SongCount,
+            TotalLikes = row.TotalLikes,
+            TotalListens = row.TotalListens
+        };
     }
 
     public async Task<Dictionary<Guid, Core.DTOs.ArtistStatsDto>> GetArtistsStatsBatchAsync(IEnumerable<Guid> artistIds)
@@ -131,7 +139,7 @@ public class UserRepository : BaseRepository<User>, IUserRepository
 
         var sql = @"
             SELECT 
-                u.user_id as ArtistId,
+                u.user_id as ArtistIdRaw,
                 (SELECT COUNT(*) FROM user_follows uf WHERE uf.following_id = u.user_id) as FollowerCount,
                 (SELECT COUNT(DISTINCT sa.song_id) FROM song_artists sa WHERE sa.artist_id = u.user_id) as SongCount,
                 (SELECT COUNT(*) FROM user_likes ul 
@@ -143,7 +151,166 @@ public class UserRepository : BaseRepository<User>, IUserRepository
             FROM users u
             WHERE u.user_id IN @ArtistIds";
 
-        var stats = await _connection.QueryAsync<Core.DTOs.ArtistStatsDto>(sql, new { ArtistIds = idList });
-        return stats.ToDictionary(s => s.ArtistId, s => s);
+        var rows = await _connection.QueryAsync<ArtistStatsBatchRow>(sql, new { ArtistIds = idList });
+
+        var result = new Dictionary<Guid, Core.DTOs.ArtistStatsDto>();
+        foreach (var row in rows)
+        {
+            result[row.ArtistIdRaw] = new Core.DTOs.ArtistStatsDto
+            {
+                ArtistId = row.ArtistIdRaw,
+                FollowerCount = row.FollowerCount,
+                SongCount = row.SongCount,
+                TotalLikes = row.TotalLikes,
+                TotalListens = row.TotalListens
+            };
+        }
+
+        return result;
+    }
+
+    public async Task<IEnumerable<ArtistDailyIncrementDto>> GetArtistDailyIncrementsAsync(Guid artistId, DateTime fromDate, DateTime toDateExclusive)
+    {
+        var sql = @"
+            SELECT
+                agg.Date,
+                SUM(agg.FollowersDelta) as FollowersDelta,
+                SUM(agg.ListensDelta) as ListensDelta,
+                SUM(agg.LikesDelta) as LikesDelta
+            FROM
+            (
+                SELECT
+                    DATE(uf.followed_at) as Date,
+                    COUNT(*) as FollowersDelta,
+                    0 as ListensDelta,
+                    0 as LikesDelta
+                FROM user_follows uf
+                WHERE uf.following_id = @ArtistId
+                  AND uf.followed_at >= @FromDate
+                  AND uf.followed_at < @ToDateExclusive
+                GROUP BY DATE(uf.followed_at)
+
+                UNION ALL
+
+                SELECT
+                    DATE(lh.listened_at) as Date,
+                    0 as FollowersDelta,
+                    COUNT(*) as ListensDelta,
+                    0 as LikesDelta
+                FROM listening_history lh
+                JOIN song_artists sa ON sa.song_id = lh.song_id
+                WHERE sa.artist_id = @ArtistId
+                  AND lh.listened_at >= @FromDate
+                  AND lh.listened_at < @ToDateExclusive
+                GROUP BY DATE(lh.listened_at)
+
+                UNION ALL
+
+                SELECT
+                    DATE(ul.liked_at) as Date,
+                    0 as FollowersDelta,
+                    0 as ListensDelta,
+                    COUNT(*) as LikesDelta
+                FROM user_likes ul
+                JOIN song_artists sa ON sa.song_id = ul.song_id
+                WHERE sa.artist_id = @ArtistId
+                  AND ul.liked_at >= @FromDate
+                  AND ul.liked_at < @ToDateExclusive
+                GROUP BY DATE(ul.liked_at)
+            ) agg
+            GROUP BY agg.Date
+            ORDER BY agg.Date ASC;";
+
+        return await _connection.QueryAsync<ArtistDailyIncrementDto>(sql, new
+        {
+            ArtistId = artistId,
+            FromDate = fromDate,
+            ToDateExclusive = toDateExclusive
+        });
+    }
+
+    public async Task<PagingResult<ArtistTopSongDto>> GetArtistTopSongsAsync(Guid artistId, DateTime fromDate, DateTime toDateExclusive, int pageIndex, int pageSize)
+    {
+        var countSql = @"
+            SELECT COUNT(1)
+            FROM (
+                SELECT DISTINCT sa.song_id
+                FROM song_artists sa
+                WHERE sa.artist_id = @ArtistId
+            ) t";
+
+        var totalRecords = await _connection.ExecuteScalarAsync<int>(countSql, new { ArtistId = artistId });
+
+        var offset = (pageIndex - 1) * pageSize;
+
+        var dataSql = @"
+            SELECT
+                s.song_id as SongId,
+                s.title as Title,
+                s.thumbnail as Thumbnail,
+                COALESCE(l.ListenCount, 0) as Listens,
+                COALESCE(k.LikeCount, 0) as Likes,
+                0 as FollowersGained
+            FROM (
+                SELECT DISTINCT sa.song_id
+                FROM song_artists sa
+                WHERE sa.artist_id = @ArtistId
+            ) artist_songs
+            JOIN songs s ON s.song_id = artist_songs.song_id
+            LEFT JOIN
+            (
+                SELECT lh.song_id, COUNT(*) as ListenCount
+                FROM listening_history lh
+                WHERE lh.listened_at >= @FromDate
+                  AND lh.listened_at < @ToDateExclusive
+                GROUP BY lh.song_id
+            ) l ON l.song_id = s.song_id
+            LEFT JOIN
+            (
+                SELECT ul.song_id, COUNT(*) as LikeCount
+                FROM user_likes ul
+                WHERE ul.liked_at >= @FromDate
+                  AND ul.liked_at < @ToDateExclusive
+                GROUP BY ul.song_id
+            ) k ON k.song_id = s.song_id
+            ORDER BY Listens DESC, Likes DESC, s.created_at DESC
+            LIMIT @Limit OFFSET @Offset;";
+
+        var data = await _connection.QueryAsync<ArtistTopSongDto>(dataSql, new
+        {
+            ArtistId = artistId,
+            FromDate = fromDate,
+            ToDateExclusive = toDateExclusive,
+            Limit = pageSize,
+            Offset = offset
+        });
+
+        var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+        return new PagingResult<ArtistTopSongDto>
+        {
+            Data = data,
+            TotalRecords = totalRecords,
+            TotalPages = totalPages,
+            FromRecord = totalRecords == 0 ? 0 : offset + 1,
+            ToRecord = totalRecords == 0 ? 0 : Math.Min(pageIndex * pageSize, totalRecords)
+        };
+    }
+
+    private sealed class ArtistStatsRow
+    {
+        public int FollowerCount { get; set; }
+        public int SongCount { get; set; }
+        public int TotalLikes { get; set; }
+        public int TotalListens { get; set; }
+    }
+
+    private sealed class ArtistStatsBatchRow
+    {
+        public Guid ArtistIdRaw { get; set; }
+        public int FollowerCount { get; set; }
+        public int SongCount { get; set; }
+        public int TotalLikes { get; set; }
+        public int TotalListens { get; set; }
     }
 }

@@ -69,4 +69,14 @@ public interface IUserRepository : IBaseRepository<User>
     /// Lấy thống kê cho nhiều artists cùng lúc
     /// </summary>
     Task<Dictionary<Guid, ArtistStatsDto>> GetArtistsStatsBatchAsync(IEnumerable<Guid> artistIds);
+
+    /// <summary>
+    /// Lấy biến động theo ngày cho artist trong khoảng thời gian
+    /// </summary>
+    Task<IEnumerable<ArtistDailyIncrementDto>> GetArtistDailyIncrementsAsync(Guid artistId, DateTime fromDate, DateTime toDateExclusive);
+
+    /// <summary>
+    /// Lấy top songs của artist trong khoảng thời gian
+    /// </summary>
+    Task<PagingResult<ArtistTopSongDto>> GetArtistTopSongsAsync(Guid artistId, DateTime fromDate, DateTime toDateExclusive, int pageIndex, int pageSize);
 }
