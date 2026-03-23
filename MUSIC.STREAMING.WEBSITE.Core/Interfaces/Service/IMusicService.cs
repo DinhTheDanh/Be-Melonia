@@ -65,6 +65,16 @@ public interface IMusicService
     Task<PagingResult<AlbumDto>> GetAlbumsAsync(string keyword, int pageIndex, int pageSize);
 
     /// <summary>
+    /// Lấy danh sách album phổ biến theo khung thời gian
+    /// </summary>
+    /// <param name="windowType">Khung thời gian: 1d, 7d, 28d, all</param>
+    /// <param name="keyword">Từ khóa tìm kiếm theo tên album</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Danh sách album phổ biến phân trang</returns>
+    Task<PagingResult<PopularAlbumDto>> GetPopularAlbumsAsync(string windowType, string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
     /// Tạo thể loại âm nhạc
     /// </summary>
     /// <param name="dto">DTO tạo thể loại</param>
@@ -102,6 +112,11 @@ public interface IMusicService
     /// <param name="pageSize">Kích thước trang</param>
     /// <returns>Danh sách bài hát phân trang</returns>
     Task<PagingResult<SongDto>> GetUserSongsAsync(Guid userId, string keyword, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy danh sách bài hát đang chờ/phát hành theo lịch của người dùng
+    /// </summary>
+    Task<PagingResult<ScheduledSongQueueItemDto>> GetUserScheduledSongsAsync(Guid userId, string status, int pageIndex, int pageSize);
 
     /// <summary>
     /// Lấy danh sách album của người dùng (nghệ sĩ) hiện tại
@@ -183,4 +198,10 @@ public interface IMusicService
     /// <param name="songId">ID bài hát</param>
     /// <returns>Kết quả xử lý</returns>
     Task<Result> AddSongToAlbumAsync(Guid userId, Guid albumId, Guid songId);
+
+    /// <summary>
+    /// Publish các bài hát đã tới thời điểm phát hành
+    /// </summary>
+    /// <returns>Số lượng bài hát được publish thành công</returns>
+    Task<int> PublishDueScheduledSongsAsync(int batchSize = 100);
 }

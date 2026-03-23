@@ -17,6 +17,38 @@ public class SongDto
     public List<Guid>? ArtistIds { get; set; } = new();
     public int LikeCount { get; set; }
     public int ListenCount { get; set; }
+    public DateTime? ScheduledReleaseAt { get; set; }
+    public string ReleaseStatus { get; set; } = "published";
+    public DateTime? PublishedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+public class RelatedSongDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string ArtistNames { get; set; } = string.Empty;
+    public List<Guid> ArtistIds { get; set; } = new();
+    public string? Thumbnail { get; set; }
+    public string FileUrl { get; set; } = string.Empty;
+    public int Duration { get; set; }
+    public string? GenreName { get; set; }
+    public int LikeCount { get; set; }
+    public int ListenCount { get; set; }
+    public DateTime? ReleaseDate { get; set; }
+    public double Score { get; set; }
+    public List<string> Reasons { get; set; } = new();
+}
+
+public class ScheduledSongQueueItemDto
+{
+    public Guid SongId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string ArtistNames { get; set; } = string.Empty;
+    public string? Thumbnail { get; set; }
+    public DateTime? ScheduledReleaseAt { get; set; }
+    public string ReleaseStatus { get; set; } = "pending";
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -31,6 +63,15 @@ public class AlbumDto
     public DateTime ReleaseDate { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+}
+
+public class PopularAlbumDto : AlbumDto
+{
+    public double Score { get; set; }
+    public int Rank { get; set; }
+    public int Streams { get; set; }
+    public int UniqueListeners { get; set; }
+    public int SaveCount { get; set; }
 }
 
 public class GenreDto

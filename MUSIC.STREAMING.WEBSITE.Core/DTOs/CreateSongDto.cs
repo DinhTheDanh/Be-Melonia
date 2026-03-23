@@ -21,6 +21,8 @@ public class CreateSongDto
     public string? Lyrics { get; set; }
 
     public string? FileHash { get; set; }
+
+    public DateTime? ScheduledReleaseAt { get; set; }
 }
 
 public class UpdateSongDto
@@ -31,4 +33,5 @@ public class UpdateSongDto
     public bool? IsPublic { get; set; }
     public Guid? AlbumId { get; set; }
     public List<Guid>? GenreIds { get; set; }
+    public DateTime? ScheduledReleaseAt { get; set; }
 }

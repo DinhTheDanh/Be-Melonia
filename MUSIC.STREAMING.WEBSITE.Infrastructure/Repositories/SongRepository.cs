@@ -93,6 +93,9 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
 
         var sql = $@"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   s.scheduled_release_at as ScheduledReleaseAt,
+                   s.release_status as ReleaseStatus,
+                   s.published_at as PublishedAt,
                    s.created_at as CreatedAt, s.updated_at as UpdatedAt,
                    s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
@@ -140,6 +143,9 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
 
         var sql = $@"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   s.scheduled_release_at as ScheduledReleaseAt,
+                   s.release_status as ReleaseStatus,
+                   s.published_at as PublishedAt,
                    s.created_at as CreatedAt, s.updated_at as UpdatedAt,
                    s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
@@ -196,6 +202,9 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
 
         var sql = $@"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration, s.created_at, s.updated_at,
+                   s.scheduled_release_at as ScheduledReleaseAt,
+                   s.release_status as ReleaseStatus,
+                   s.published_at as PublishedAt,
                    s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
                    (SELECT COUNT(*) FROM user_likes ul WHERE ul.song_id = s.song_id) as LikeCount,
@@ -275,6 +284,9 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
 
         var sql = @"
             SELECT s.song_id as Id, s.title, s.thumbnail, s.file_url as FileUrl, s.duration,
+                   s.scheduled_release_at as ScheduledReleaseAt,
+                   s.release_status as ReleaseStatus,
+                   s.published_at as PublishedAt,
                    s.created_at as CreatedAt, s.updated_at as UpdatedAt,
                    s.album_id as AlbumId, al.title as AlbumTitle,
                    GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
@@ -290,6 +302,104 @@ public class SongRepository : BaseRepository<Song>, ISongRepository
 
         var data = await _connection.QueryAsync<SongDto>(sql, new { SongIds = songIds });
         return data.AsList();
+    }
+
+    public async Task<PagingResult<ScheduledSongQueueItemDto>> GetUserScheduledSongsAsync(Guid userId, string status, int pageIndex, int pageSize)
+    {
+        var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "all" : status.Trim().ToLowerInvariant();
+        var whereSql = normalizedStatus switch
+        {
+            "pending" => "AND s.release_status = 'pending'",
+            "upcoming" => "AND s.release_status = 'scheduled'",
+            _ => "AND s.release_status IN ('pending', 'scheduled', 'failed')"
+        };
+
+        var p = new DynamicParameters();
+        p.Add("UserId", userId);
+
+        var countSql = $@"
+            SELECT COUNT(DISTINCT s.song_id)
+            FROM songs s
+            JOIN song_artists sa ON s.song_id = sa.song_id
+            WHERE sa.artist_id = @UserId
+            {whereSql}";
+
+        var totalRecords = await _connection.ExecuteScalarAsync<int>(countSql, p);
+
+        var offset = (pageIndex - 1) * pageSize;
+        p.Add("Off", offset);
+        p.Add("Lim", pageSize);
+
+        var sql = $@"
+            SELECT s.song_id as SongId,
+                   s.title as Title,
+                   GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') as ArtistNames,
+                   s.thumbnail as Thumbnail,
+                   s.scheduled_release_at as ScheduledReleaseAt,
+                   s.release_status as ReleaseStatus,
+                   s.created_at as CreatedAt,
+                   s.updated_at as UpdatedAt
+            FROM songs s
+            JOIN song_artists sa_filter ON s.song_id = sa_filter.song_id
+            LEFT JOIN song_artists sa_all ON s.song_id = sa_all.song_id
+            LEFT JOIN users u ON sa_all.artist_id = u.user_id
+            WHERE sa_filter.artist_id = @UserId
+            {whereSql}
+            GROUP BY s.song_id, s.title, s.thumbnail, s.scheduled_release_at, s.release_status, s.created_at, s.updated_at
+            ORDER BY COALESCE(s.scheduled_release_at, s.created_at) ASC
+            LIMIT @Lim OFFSET @Off";
+
+        var data = await _connection.QueryAsync<ScheduledSongQueueItemDto>(sql, p);
+
+        return new PagingResult<ScheduledSongQueueItemDto>
+        {
+            Data = data,
+            TotalRecords = totalRecords,
+            TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize),
+            FromRecord = totalRecords == 0 ? 0 : offset + 1,
+            ToRecord = totalRecords == 0 ? 0 : Math.Min(pageIndex * pageSize, totalRecords)
+        };
+    }
+
+    public async Task<List<Song>> GetSongsReadyToPublishAsync(DateTime nowUtc, int batchSize)
+    {
+        var sql = @"
+            SELECT *
+            FROM songs
+            WHERE release_status = 'scheduled'
+              AND scheduled_release_at IS NOT NULL
+              AND scheduled_release_at <= @NowUtc
+            ORDER BY scheduled_release_at ASC
+            LIMIT @BatchSize";
+
+        var songs = await _connection.QueryAsync<Song>(sql, new { NowUtc = nowUtc, BatchSize = batchSize });
+        return songs.AsList();
+    }
+
+    public async Task<bool> PublishScheduledSongAsync(Guid songId, DateTime publishedAtUtc)
+    {
+        var sql = @"
+            UPDATE songs
+            SET is_public = 1,
+                release_status = 'published',
+                published_at = @PublishedAtUtc,
+                scheduled_release_at = NULL,
+                publish_error = NULL,
+                updated_at = @PublishedAtUtc
+            WHERE song_id = @SongId
+              AND release_status = 'scheduled'
+              AND scheduled_release_at IS NOT NULL
+              AND scheduled_release_at <= @PublishedAtUtc";
+
+        var affected = await _connection.ExecuteAsync(sql, new { SongId = songId, PublishedAtUtc = publishedAtUtc });
+        return affected > 0;
+    }
+
+    public async Task<List<Guid>> GetSongArtistIdsAsync(Guid songId)
+    {
+        var sql = "SELECT artist_id FROM song_artists WHERE song_id = @SongId";
+        var artistIds = await _connection.QueryAsync<Guid>(sql, new { SongId = songId });
+        return artistIds.AsList();
     }
 }
 

@@ -221,7 +221,7 @@ public class AdminRepository : IAdminRepository
         await _connection.ExecuteAsync("DELETE FROM song_genres WHERE song_id = @SongId", new { SongId = songId });
         await _connection.ExecuteAsync("DELETE FROM user_likes WHERE song_id = @SongId", new { SongId = songId });
         await _connection.ExecuteAsync("DELETE FROM user_song_stats WHERE song_id = @SongId", new { SongId = songId });
-        await _connection.ExecuteAsync("DELETE FROM listening_histories WHERE song_id = @SongId", new { SongId = songId });
+        await _connection.ExecuteAsync("DELETE FROM listening_history WHERE song_id = @SongId", new { SongId = songId });
         await _connection.ExecuteAsync("DELETE FROM playlist_songs WHERE song_id = @SongId", new { SongId = songId });
 
         var rows = await _connection.ExecuteAsync("DELETE FROM songs WHERE song_id = @SongId", new { SongId = songId });

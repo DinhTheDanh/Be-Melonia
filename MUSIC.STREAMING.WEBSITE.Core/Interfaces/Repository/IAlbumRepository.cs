@@ -55,5 +55,15 @@ public interface IAlbumRepository : IBaseRepository<Album>
     /// <param name="albumIds">Danh sách ID album</param>
     /// <returns>Danh sách AlbumDto</returns>
     Task<List<AlbumDto>> GetAlbumsByIdsAsync(List<Guid> albumIds);
+
+    /// <summary>
+    /// Lấy danh sách album phổ biến theo khung thời gian
+    /// </summary>
+    /// <param name="windowType">Khung thời gian: 1d, 7d, 28d, all</param>
+    /// <param name="keyword">Từ khóa tìm kiếm theo tên album</param>
+    /// <param name="pageIndex">Chỉ mục trang</param>
+    /// <param name="pageSize">Kích thước trang</param>
+    /// <returns>Danh sách album phổ biến phân trang</returns>
+    Task<PagingResult<PopularAlbumDto>> GetPopularAlbumsAsync(string windowType, string keyword, int pageIndex, int pageSize);
 }
 

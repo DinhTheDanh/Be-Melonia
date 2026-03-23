@@ -171,5 +171,59 @@ public class AlbumRepository : BaseRepository<Album>, IAlbumRepository
         var data = await _connection.QueryAsync<AlbumDto>(sql, new { AlbumIds = albumIds });
         return data.AsList();
     }
+
+    public async Task<PagingResult<PopularAlbumDto>> GetPopularAlbumsAsync(string windowType, string keyword, int pageIndex, int pageSize)
+    {
+        var normalizedWindow = string.IsNullOrWhiteSpace(windowType) ? "7d" : windowType.Trim().ToLower();
+        var p = new DynamicParameters();
+        p.Add("WindowType", normalizedWindow);
+        p.Add("Keyword", string.IsNullOrEmpty(keyword) ? "" : $"%{keyword}%");
+
+        var countSql = @"
+            SELECT COUNT(1)
+            FROM album_popularity_scores aps
+            JOIN albums a ON aps.album_id = a.album_id
+            WHERE aps.window_type = @WindowType
+              AND (a.title LIKE @Keyword OR @Keyword = '')";
+
+        var totalRecords = await _connection.ExecuteScalarAsync<int>(countSql, p);
+
+        int offset = (pageIndex - 1) * pageSize;
+        p.Add("Off", offset);
+        p.Add("Lim", pageSize);
+
+        var sql = @"
+            SELECT a.album_id as AlbumId,
+                   a.title,
+                   a.thumbnail,
+                   a.release_date as ReleaseDate,
+                   a.created_at as CreatedAt,
+                   a.updated_at as UpdatedAt,
+                   a.artist_id as ArtistId,
+                   u.full_name as ArtistName,
+                   aps.score as Score,
+                   aps.rank_position as `Rank`,
+                   aps.streams as Streams,
+                   aps.unique_listeners as UniqueListeners,
+                   aps.save_count as SaveCount
+            FROM album_popularity_scores aps
+            JOIN albums a ON aps.album_id = a.album_id
+            LEFT JOIN users u ON a.artist_id = u.user_id
+            WHERE aps.window_type = @WindowType
+              AND (a.title LIKE @Keyword OR @Keyword = '')
+            ORDER BY aps.rank_position ASC, aps.score DESC
+            LIMIT @Lim OFFSET @Off";
+
+        var data = await _connection.QueryAsync<PopularAlbumDto>(sql, p);
+
+        return new PagingResult<PopularAlbumDto>
+        {
+            Data = data,
+            TotalRecords = totalRecords,
+            TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize),
+            FromRecord = totalRecords == 0 ? 0 : offset + 1,
+            ToRecord = totalRecords == 0 ? 0 : Math.Min(pageIndex * pageSize, totalRecords)
+        };
+    }
 }
 

@@ -16,19 +16,58 @@ namespace MUSIC.STREAMING.WEBSITE.Core.Services;
 
 public class MusicService : IMusicService
 {
+    private static readonly HashSet<string> ScheduleStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "pending",
+        "upcoming",
+        "all"
+    };
+
     private readonly ISongRepository _songRepo;
     private readonly IAlbumRepository _albumRepo;
     private readonly IPlaylistRepository _playlistRepo;
     private readonly IGenreRepository _genreRepo;
+    private readonly IFeatureAuthorizationService _featureAuthService;
+    private readonly INotificationService _notificationService;
     private readonly IConnectionMultiplexer _redis;
 
-    public MusicService(ISongRepository songRepo, IAlbumRepository albumRepo, IPlaylistRepository playlistRepo, IGenreRepository genreRepo, IConnectionMultiplexer redis)
+    public MusicService(
+        ISongRepository songRepo,
+        IAlbumRepository albumRepo,
+        IPlaylistRepository playlistRepo,
+        IGenreRepository genreRepo,
+        IFeatureAuthorizationService featureAuthService,
+        INotificationService notificationService,
+        IConnectionMultiplexer redis)
     {
         _songRepo = songRepo;
         _albumRepo = albumRepo;
         _playlistRepo = playlistRepo;
         _genreRepo = genreRepo;
+        _featureAuthService = featureAuthService;
+        _notificationService = notificationService;
         _redis = redis;
+    }
+
+    private static Result ValidateScheduledReleaseAt(DateTime scheduledReleaseAtUtc)
+    {
+        if (scheduledReleaseAtUtc.Kind != DateTimeKind.Utc)
+        {
+            return Result.Failure("ScheduledReleaseAt phải là UTC (ISO-8601, ví dụ 2026-03-25T14:00:00Z)");
+        }
+
+        var nowUtc = DateTime.UtcNow;
+        if (scheduledReleaseAtUtc <= nowUtc)
+        {
+            return Result.Failure("ScheduledReleaseAt phải lớn hơn thời điểm hiện tại");
+        }
+
+        if (scheduledReleaseAtUtc > nowUtc.AddDays(365))
+        {
+            return Result.Failure("ScheduledReleaseAt không được vượt quá 365 ngày trong tương lai");
+        }
+
+        return Result.Success();
     }
 
     private async Task InvalidateCacheByPatternAsync(string pattern)
@@ -116,6 +155,19 @@ public class MusicService : IMusicService
         return await _albumRepo.GetAlbumsWithArtistAsync(keyword, pageIndex, pageSize);
     }
 
+    public async Task<PagingResult<PopularAlbumDto>> GetPopularAlbumsAsync(string windowType, string keyword, int pageIndex, int pageSize)
+    {
+        var allowedWindows = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "1d", "7d", "28d", "all" };
+        var normalized = string.IsNullOrWhiteSpace(windowType) ? "7d" : windowType.Trim().ToLower();
+
+        if (!allowedWindows.Contains(normalized))
+        {
+            normalized = "7d";
+        }
+
+        return await _albumRepo.GetPopularAlbumsAsync(normalized, keyword, pageIndex, pageSize);
+    }
+
     public async Task<Song?> CheckFileHashAsync(string hash)
     {
         return await _songRepo.GetByFileHashAsync(hash);
@@ -124,6 +176,17 @@ public class MusicService : IMusicService
     public async Task<PagingResult<SongDto>> GetUserSongsAsync(Guid userId, string keyword, int pageIndex, int pageSize)
     {
         return await _songRepo.GetUserSongsAsync(userId, keyword, pageIndex, pageSize);
+    }
+
+    public async Task<PagingResult<ScheduledSongQueueItemDto>> GetUserScheduledSongsAsync(Guid userId, string status, int pageIndex, int pageSize)
+    {
+        var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "all" : status.Trim().ToLowerInvariant();
+        if (!ScheduleStatuses.Contains(normalizedStatus))
+        {
+            normalizedStatus = "all";
+        }
+
+        return await _songRepo.GetUserScheduledSongsAsync(userId, normalizedStatus, pageIndex, pageSize);
     }
 
     public async Task<PagingResult<AlbumDto>> GetUserAlbumsAsync(Guid userId, string keyword, int pageIndex, int pageSize)
@@ -196,7 +259,29 @@ public class MusicService : IMusicService
     {
         using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
         {
+            var scheduledReleaseAtUtc = dto.ScheduledReleaseAt;
+            if (scheduledReleaseAtUtc.HasValue)
+            {
+                var validationResult = ValidateScheduledReleaseAt(scheduledReleaseAtUtc.Value);
+                if (validationResult.IsFailure)
+                {
+                    throw new InvalidOperationException(validationResult.Error);
+                }
+
+                var canScheduleResult = await _featureAuthService.CanScheduleReleaseAsync(artistId);
+                if (canScheduleResult.IsFailure)
+                {
+                    throw new InvalidOperationException(canScheduleResult.Error);
+                }
+
+                if (canScheduleResult.Data != true)
+                {
+                    throw new UnauthorizedAccessException("Scheduling feature is not available for current plan");
+                }
+            }
+
             var thumb = !string.IsNullOrEmpty(dto.Thumbnail) ? dto.Thumbnail : ImageHelper.GenerateCover(dto.Title);
+            var isScheduled = scheduledReleaseAtUtc.HasValue;
 
             var song = new Song
             {
@@ -208,7 +293,11 @@ public class MusicService : IMusicService
                 Duration = dto.Duration,
                 Lyrics = dto.Lyrics,
                 FileHash = dto.FileHash,
-                CreatedAt = DateTime.Now
+                ScheduledReleaseAt = scheduledReleaseAtUtc,
+                ReleaseStatus = isScheduled ? "scheduled" : "published",
+                PublishedAt = isScheduled ? null : DateTime.UtcNow,
+                IsPublic = !isScheduled,
+                CreatedAt = DateTime.UtcNow
             };
 
             await _songRepo.CreateAsync(song);
@@ -284,10 +373,40 @@ public class MusicService : IMusicService
         song.Lyrics = dto.Lyrics ?? song.Lyrics;
         if (dto.IsPublic.HasValue)
             song.IsPublic = dto.IsPublic.Value;
-        song.UpdatedAt = DateTime.Now;
+        song.UpdatedAt = DateTime.UtcNow;
         if (dto.AlbumId.HasValue)
         {
             song.AlbumId = dto.AlbumId.Value;
+        }
+
+        if (dto.ScheduledReleaseAt.HasValue)
+        {
+            if (string.Equals(song.ReleaseStatus, "published", StringComparison.OrdinalIgnoreCase))
+            {
+                return Result.Conflict("Bài hát đã publish, không thể lên lịch lại");
+            }
+
+            var validationResult = ValidateScheduledReleaseAt(dto.ScheduledReleaseAt.Value);
+            if (validationResult.IsFailure)
+            {
+                return Result.Failure(validationResult.Error!);
+            }
+
+            var canScheduleResult = await _featureAuthService.CanScheduleReleaseAsync(artistId);
+            if (canScheduleResult.IsFailure)
+            {
+                return Result.Failure(canScheduleResult.Error!);
+            }
+
+            if (canScheduleResult.Data != true)
+            {
+                return Result.Forbidden("Scheduling feature is not available for current plan");
+            }
+
+            song.ScheduledReleaseAt = dto.ScheduledReleaseAt;
+            song.ReleaseStatus = "scheduled";
+            song.IsPublic = false;
+            song.PublishedAt = null;
         }
 
         await _songRepo.UpdateAsync(songId, song);
@@ -309,6 +428,41 @@ public class MusicService : IMusicService
         catch (RedisException) { }
 
         return Result.Success();
+    }
+
+    public async Task<int> PublishDueScheduledSongsAsync(int batchSize = 100)
+    {
+        var nowUtc = DateTime.UtcNow;
+        var dueSongs = await _songRepo.GetSongsReadyToPublishAsync(nowUtc, batchSize);
+        if (dueSongs.Count == 0)
+        {
+            return 0;
+        }
+
+        var publishedCount = 0;
+        foreach (var dueSong in dueSongs)
+        {
+            var published = await _songRepo.PublishScheduledSongAsync(dueSong.SongId, nowUtc);
+            if (!published)
+            {
+                continue;
+            }
+
+            publishedCount++;
+
+            var artistIds = await _songRepo.GetSongArtistIdsAsync(dueSong.SongId);
+            foreach (var artistId in artistIds)
+            {
+                await _notificationService.SendSystemNotificationAsync(
+                    artistId,
+                    "Bài hát đã được phát hành",
+                    $"Bài hát '{dueSong.Title}' đã được phát hành theo lịch.",
+                    "release",
+                    dueSong.SongId);
+            }
+        }
+
+        return publishedCount;
     }
 
     public async Task<Result> DeleteSongAsync(Guid artistId, Guid songId)

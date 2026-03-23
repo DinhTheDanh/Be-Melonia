@@ -29,5 +29,36 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
             var albums = await _recommendationService.GetRecommendedAlbumsAsync(userId, topN);
             return Ok(new { Message = "Lấy danh sách album đề xuất thành công", Data = albums });
         }
+
+        [HttpGet("related-songs/{songId}")]
+        public async Task<IActionResult> GetRelatedSongs(
+            Guid songId,
+            [FromQuery] int limit = 6,
+            [FromQuery] bool excludeExplicit = false,
+            [FromQuery] Guid? userId = null)
+        {
+            if (limit <= 0 || limit > 20)
+            {
+                return BadRequest(new { Message = "limit must be between 1 and 20" });
+            }
+
+            var result = await _recommendationService.GetRelatedSongsAsync(songId, limit, excludeExplicit, userId);
+            if (result.IsFailure)
+            {
+                if (result.Type == Core.DTOs.ResultType.NotFound)
+                {
+                    return NotFound(new { Message = result.Error });
+                }
+
+                if (result.Type == Core.DTOs.ResultType.BadRequest)
+                {
+                    return BadRequest(new { Message = result.Error });
+                }
+
+                return StatusCode(500, new { Message = result.Error ?? "Failed to get related songs" });
+            }
+
+            return Ok(new { Message = "OK", Data = result.Data });
+        }
     }
 }

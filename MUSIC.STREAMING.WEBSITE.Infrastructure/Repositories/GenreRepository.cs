@@ -12,6 +12,19 @@ public class GenreRepository : BaseRepository<Genre>, IGenreRepository
     {
     }
 
+    public override async Task<int> CreateAsync(Genre entity)
+    {
+        if (entity.Id == Guid.Empty)
+        {
+            entity.Id = Guid.NewGuid();
+        }
+
+        var sql = @"INSERT INTO genres (id, name, image_url)
+                    VALUES (@Id, @Name, @ImageUrl);";
+
+        return await _connection.ExecuteAsync(sql, entity);
+    }
+
     public async Task<IEnumerable<Genre>> GetAllGenresAsync()
     {
         return await _connection.QueryAsync<Genre>("SELECT * FROM genres ORDER BY name ASC");

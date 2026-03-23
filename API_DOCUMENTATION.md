@@ -701,6 +701,43 @@ GET /Music/my-songs?keyword=&pageIndex=1&pageSize=10
 
 ---
 
+### 19.5. Get My Scheduled Songs ✅
+
+```
+GET /Music/my-scheduled-songs?status=all&pageIndex=1&pageSize=20
+```
+
+**Params:**
+
+- `status` (string, optional): `pending`, `upcoming`, `all` (mặc định `all`)
+- `pageIndex` (int, optional): mặc định `1`
+- `pageSize` (int, optional): mặc định `20`
+
+**Response:** PagingResult<ScheduledSongQueueItemDto>
+
+```json
+{
+  "Data": [
+    {
+      "SongId": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+      "Title": "My Scheduled Track",
+      "ArtistNames": "Dinh The Danh",
+      "Thumbnail": "https://res.cloudinary.com/.../thumb.jpg",
+      "ScheduledReleaseAt": "2026-03-26T14:00:00",
+      "ReleaseStatus": "scheduled",
+      "CreatedAt": "2026-03-21T10:00:00",
+      "UpdatedAt": "2026-03-21T10:05:00"
+    }
+  ],
+  "TotalRecords": 12,
+  "TotalPages": 1,
+  "FromRecord": 1,
+  "ToRecord": 12
+}
+```
+
+---
+
 ### 20. Create Song ✅
 
 ```
@@ -716,7 +753,8 @@ Content-Type: application/json
   "Duration": 180,
   "GenreIds": ["genre-guid-1", "genre-guid-2"],
   "Lyrics": "Lời bài hát... (optional)",
-  "FileHash": "4a0dcd618452d123fab76723c54ae035 (optional)"
+  "FileHash": "4a0dcd618452d123fab76723c54ae035 (optional)",
+  "ScheduledReleaseAt": "2026-03-25T14:00:00Z (optional, UTC)"
 }
 ```
 
@@ -732,6 +770,9 @@ Content-Type: application/json
   "Duration": 180,
   "Lyrics": "Lời bài hát...",
   "IsPublic": true,
+  "ScheduledReleaseAt": null,
+  "ReleaseStatus": "published",
+  "PublishedAt": "2026-03-07T10:00:00",
   "CreatedAt": "2026-03-07T10:00:00",
   "UpdatedAt": null,
   "FileHash": "4a0dcd618452d123fab76723c54ae035"
@@ -739,6 +780,8 @@ Content-Type: application/json
 ```
 
 > **Lưu ý:** Response trả về **Song entity** (có `SongId`), KHÔNG phải SongDto. Nếu không truyền Thumbnail, server tự tạo DiceBear avatar.
+> Nếu truyền `ScheduledReleaseAt` trong tương lai: bài hát sẽ ở trạng thái `scheduled`, chưa public ngay.
+> Nếu gói hiện tại không có quyền schedule: trả về **403 Forbidden** với message `Scheduling feature is not available for current plan`.
 
 ---
 
@@ -754,11 +797,13 @@ Content-Type: application/json
   "Lyrics": "Lời bài hát...",
   "IsPublic": true,
   "AlbumId": "guid | null",
-  "GenreIds": ["guid1", "guid2"]
+  "GenreIds": ["guid1", "guid2"],
+  "ScheduledReleaseAt": "2026-03-26T14:00:00Z (optional, UTC)"
 }
 ```
 
 > Tất cả fields đều **optional**. Chỉ chủ sở hữu bài hát mới có thể chỉnh sửa.
+> Nếu bài hát đã `published` thì không thể schedule lại, API trả về **409 Conflict**.
 
 **Response (200 OK):**
 
@@ -767,8 +812,6 @@ Content-Type: application/json
   "Message": "Cập nhật bài hát thành công"
 }
 ```
-
----
 
 ### 22. Delete Song ✅
 
@@ -848,6 +891,49 @@ GET /Music/albums?keyword=&pageIndex=1&pageSize=10
   ],
   "TotalRecords": 10,
   "TotalPages": 1,
+  "FromRecord": 1,
+  "ToRecord": 10
+}
+```
+
+---
+
+### 24.5. Get Popular Albums
+
+```
+GET /Music/albums/popular?windowType=7d&keyword=&pageIndex=1&pageSize=10
+```
+
+**Params:**
+
+- `windowType` (string, optional) - `1d`, `7d`, `28d`, `all` (mặc định `7d`)
+- `keyword` (string, optional) - Tìm kiếm theo tên album
+- `pageIndex` (int)
+- `pageSize` (int)
+
+**Response:** PagingResult<PopularAlbumDto>
+
+```json
+{
+  "Data": [
+    {
+      "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
+      "Title": "Top Album",
+      "Thumbnail": "https://res.cloudinary.com/.../album.webp",
+      "ArtistId": "514685e6-5141-40c6-84c6-37c43da959aa",
+      "ArtistName": "Dinh The Danh",
+      "ReleaseDate": "2026-02-07T22:01:48",
+      "CreatedAt": "2026-02-07T22:01:48",
+      "UpdatedAt": null,
+      "Score": 92.54,
+      "Rank": 1,
+      "Streams": 12540,
+      "UniqueListeners": 4820,
+      "SaveCount": 690
+    }
+  ],
+  "TotalRecords": 120,
+  "TotalPages": 12,
   "FromRecord": 1,
   "ToRecord": 10
 }
@@ -1672,6 +1758,75 @@ GET /Recommendation/songs/{userId}?topN=20
 
 ---
 
+### 47.5. Get Related Songs ✅
+
+```
+GET /Recommendation/related-songs/{songId}?limit=6&excludeExplicit=false&userId=
+```
+
+**Params:**
+
+- `songId` (Guid, required) - ID bài hát hiện tại
+- `limit` (int, optional) - Số bài hát liên quan trả về (mặc định `6`, min `1`, max `20`)
+- `excludeExplicit` (bool, optional) - Lọc nội dung explicit (mặc định `false`)
+- `userId` (Guid, optional) - Dùng cho cá nhân hóa nếu có đăng nhập
+
+**Logic chính:**
+
+1. Exclude chính `songId` hiện tại
+2. Chỉ lấy bài hát public và có `FileUrl`
+3. Chấm điểm theo trọng số:
+   - `same_artist`: `+0.40`
+   - `similar_genre`: `+0.25`
+   - `co_listen`: `+0.20`
+   - `trending`: `+0.10`
+   - `fresh`: `+0.05`
+4. Fallback khi thiếu dữ liệu: same artist → same genre → trending → recent
+5. Cache Redis: `related:{songId}:{limit}:{userSegment}:{excludeExplicit}` (TTL 15 phút)
+
+**Response (200 OK):**
+
+```json
+{
+  "Message": "OK",
+  "Data": [
+    {
+      "Id": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+      "Title": "Related Track",
+      "ArtistNames": "Artist A, Artist B",
+      "ArtistIds": ["guid-artist-1", "guid-artist-2"],
+      "Thumbnail": "https://res.cloudinary.com/.../image.jpg",
+      "FileUrl": "https://res.cloudinary.com/.../song.mp3",
+      "Duration": 215,
+      "GenreName": "Pop",
+      "LikeCount": 1200,
+      "ListenCount": 53000,
+      "ReleaseDate": "2026-03-10T00:00:00Z",
+      "Score": 0.873,
+      "Reasons": ["same_artist", "similar_genre", "co_listen"]
+    }
+  ]
+}
+```
+
+**Response (404 Not Found):**
+
+```json
+{
+  "Message": "Song not found"
+}
+```
+
+**Response (400 Bad Request):**
+
+```json
+{
+  "Message": "Invalid songId"
+}
+```
+
+---
+
 ### 48. Get Recommended Albums ✅
 
 ```
@@ -1717,16 +1872,17 @@ GET /Recommendation/albums/{userId}?topN=10
 
 ### Cache Strategy
 
-| Feature                 | Cache Key Pattern                     | TTL     | Invalidation                                |
-| ----------------------- | ------------------------------------- | ------- | ------------------------------------------- |
-| Genres                  | `genres:all`                          | 24h     | Khi tạo genre mới                           |
-| Album Details           | `album:{id}:details:{page}:{size}`    | 10 phút | Khi update/delete album, add/remove song    |
-| Liked Songs             | `liked_songs:{userId}:{page}:{size}`  | 10 phút | Khi toggle like                             |
-| Playlist Details        | `playlist:{id}:details:{page}:{size}` | 10 phút | Khi update/delete playlist, add/remove song |
-| Recommended Songs       | `recommendation:songs:{userId}`       | 10 phút | Tự hết hạn                                  |
-| Recommended Albums      | `recommendation:albums:{userId}`      | 10 phút | Tự hết hạn                                  |
-| Reset Password Token    | `reset_token:{token}`                 | 15 phút | Khi reset thành công                        |
-| Blacklist Refresh Token | `blacklist_refresh_token:{token}`     | 7 ngày  | Tự hết hạn                                  |
+| Feature                 | Cache Key Pattern                                      | TTL     | Invalidation                                |
+| ----------------------- | ------------------------------------------------------ | ------- | ------------------------------------------- |
+| Genres                  | `genres:all`                                           | 24h     | Khi tạo genre mới                           |
+| Album Details           | `album:{id}:details:{page}:{size}`                     | 10 phút | Khi update/delete album, add/remove song    |
+| Liked Songs             | `liked_songs:{userId}:{page}:{size}`                   | 10 phút | Khi toggle like                             |
+| Playlist Details        | `playlist:{id}:details:{page}:{size}`                  | 10 phút | Khi update/delete playlist, add/remove song |
+| Recommended Songs       | `recommendation:songs:{userId}`                        | 10 phút | Tự hết hạn                                  |
+| Recommended Albums      | `recommendation:albums:{userId}`                       | 10 phút | Tự hết hạn                                  |
+| Related Songs           | `related:{songId}:{limit}:{segment}:{excludeExplicit}` | 15 phút | Tự hết hạn                                  |
+| Reset Password Token    | `reset_token:{token}`                                  | 15 phút | Khi reset thành công                        |
+| Blacklist Refresh Token | `blacklist_refresh_token:{token}`                      | 7 ngày  | Tự hết hạn                                  |
 
 ---
 
@@ -1745,24 +1901,56 @@ GET /Recommendation/albums/{userId}?topN=10
   "AlbumTitle": "abc",
   "ArtistNames": "Dinh The Danh",
   "ArtistIds": ["514685e6-5141-40c6-84c6-37c43da959aa"],
+  "ScheduledReleaseAt": null,
+  "ReleaseStatus": "published",
+  "PublishedAt": "2026-03-01T15:25:19",
   "CreatedAt": "2026-01-27T00:07:34",
   "UpdatedAt": "2026-03-01T15:25:19"
 }
 ```
 
-| Field       | Type     | Nullable | Mô tả                                     |
-| ----------- | -------- | -------- | ----------------------------------------- |
-| Id          | Guid     | ❌       | ID bài hát                                |
-| Title       | string   | ❌       | Tên bài hát                               |
-| Thumbnail   | string   | ✅       | Ảnh bìa                                   |
-| FileUrl     | string   | ❌       | URL file nhạc (Cloudinary)                |
-| Duration    | int      | ❌       | Thời lượng (giây)                         |
-| AlbumId     | Guid     | ✅       | ID album chứa bài hát (null nếu không có) |
-| AlbumTitle  | string   | ✅       | Tên album (null nếu không có)             |
-| ArtistNames | string   | ✅       | Tên nghệ sĩ, phân cách bằng ", "          |
-| ArtistIds   | Guid[]   | ❌       | Danh sách ID nghệ sĩ                      |
-| CreatedAt   | DateTime | ❌       | Ngày tạo                                  |
-| UpdatedAt   | DateTime | ✅       | Ngày cập nhật                             |
+| Field              | Type     | Nullable | Mô tả                                                    |
+| ------------------ | -------- | -------- | -------------------------------------------------------- |
+| Id                 | Guid     | ❌       | ID bài hát                                               |
+| Title              | string   | ❌       | Tên bài hát                                              |
+| Thumbnail          | string   | ✅       | Ảnh bìa                                                  |
+| FileUrl            | string   | ❌       | URL file nhạc (Cloudinary)                               |
+| Duration           | int      | ❌       | Thời lượng (giây)                                        |
+| AlbumId            | Guid     | ✅       | ID album chứa bài hát (null nếu không có)                |
+| AlbumTitle         | string   | ✅       | Tên album (null nếu không có)                            |
+| ArtistNames        | string   | ✅       | Tên nghệ sĩ, phân cách bằng ", "                         |
+| ArtistIds          | Guid[]   | ❌       | Danh sách ID nghệ sĩ                                     |
+| ScheduledReleaseAt | DateTime | ✅       | Thời điểm phát hành theo lịch (UTC)                      |
+| ReleaseStatus      | string   | ❌       | Trạng thái phát hành: pending/scheduled/published/failed |
+| PublishedAt        | DateTime | ✅       | Thời điểm đã publish                                     |
+| CreatedAt          | DateTime | ❌       | Ngày tạo                                                 |
+| UpdatedAt          | DateTime | ✅       | Ngày cập nhật                                            |
+
+### ScheduledSongQueueItemDto
+
+```json
+{
+  "SongId": "a6f970fe-7549-41e1-8244-d1a2aa5aae1d",
+  "Title": "My Scheduled Track",
+  "ArtistNames": "Dinh The Danh",
+  "Thumbnail": "https://res.cloudinary.com/.../thumb.jpg",
+  "ScheduledReleaseAt": "2026-03-26T14:00:00",
+  "ReleaseStatus": "scheduled",
+  "CreatedAt": "2026-03-21T10:00:00",
+  "UpdatedAt": "2026-03-21T10:05:00"
+}
+```
+
+| Field              | Type     | Nullable | Mô tả                              |
+| ------------------ | -------- | -------- | ---------------------------------- |
+| SongId             | Guid     | ❌       | ID bài hát                         |
+| Title              | string   | ❌       | Tên bài hát                        |
+| ArtistNames        | string   | ❌       | Danh sách nghệ sĩ (chuỗi)          |
+| Thumbnail          | string   | ✅       | Ảnh bài hát                        |
+| ScheduledReleaseAt | DateTime | ✅       | Thời điểm phát hành theo lịch      |
+| ReleaseStatus      | string   | ❌       | pending/scheduled/published/failed |
+| CreatedAt          | DateTime | ❌       | Ngày tạo                           |
+| UpdatedAt          | DateTime | ✅       | Ngày cập nhật                      |
 
 ### AlbumDto
 
@@ -1789,6 +1977,42 @@ GET /Recommendation/albums/{userId}?topN=10
 | ReleaseDate | DateTime | ❌       | Ngày phát hành |
 | CreatedAt   | DateTime | ❌       | Ngày tạo       |
 | UpdatedAt   | DateTime | ✅       | Ngày cập nhật  |
+
+### PopularAlbumDto
+
+```json
+{
+  "AlbumId": "94f4b80a-0a95-42d7-858a-a0a4f80d80ab",
+  "Title": "Top Album",
+  "Thumbnail": "https://res.cloudinary.com/.../album.webp",
+  "ArtistId": "514685e6-5141-40c6-84c6-37c43da959aa",
+  "ArtistName": "Dinh The Danh",
+  "ReleaseDate": "2026-02-07T22:01:48",
+  "CreatedAt": "2026-02-07T22:01:48",
+  "UpdatedAt": null,
+  "Score": 92.54,
+  "Rank": 1,
+  "Streams": 12540,
+  "UniqueListeners": 4820,
+  "SaveCount": 690
+}
+```
+
+| Field           | Type     | Nullable | Mô tả                                 |
+| --------------- | -------- | -------- | ------------------------------------- |
+| AlbumId         | Guid     | ❌       | ID album                              |
+| Title           | string   | ❌       | Tên album                             |
+| Thumbnail       | string   | ✅       | Ảnh bìa                               |
+| ArtistId        | Guid     | ❌       | ID nghệ sĩ tạo                        |
+| ArtistName      | string   | ❌       | Tên nghệ sĩ                           |
+| ReleaseDate     | DateTime | ❌       | Ngày phát hành                        |
+| CreatedAt       | DateTime | ❌       | Ngày tạo                              |
+| UpdatedAt       | DateTime | ✅       | Ngày cập nhật                         |
+| Score           | double   | ❌       | Điểm popularity đã tính toán          |
+| Rank            | int      | ❌       | Thứ hạng trong window                 |
+| Streams         | int      | ❌       | Tổng lượt nghe trong window           |
+| UniqueListeners | int      | ❌       | Số user nghe duy nhất trong window    |
+| SaveCount       | int      | ❌       | Số lượt lưu album (save) trong window |
 
 ### PlaylistDto
 
@@ -2503,109 +2727,112 @@ Hệ thống tự động gửi thông báo (notification + SignalR push) trong 
 
 ---�📌 Summary Table
 
-| #    | Endpoint                                       | Method | Auth | Desc                           |
-| ---- | ---------------------------------------------- | ------ | ---- | ------------------------------ |
-| -    | **AUTH**                                       |        |      |                                |
-| 1    | `/Auth/login`                                  | POST   | ❌   | Đăng nhập                      |
-| 2    | `/Auth/google-login`                           | POST   | ❌   | Đăng nhập Google               |
-| 3    | `/Auth/register`                               | POST   | ❌   | Đăng ký                        |
-| 4    | `/Auth/refresh-token`                          | POST   | ❌   | Làm mới token                  |
-| 5    | `/Auth/logout`                                 | POST   | ✅   | Đăng xuất                      |
-| 6    | `/Auth/set-role`                               | POST   | ✅   | Cập nhật vai trò               |
-| 7    | `/Auth/change-password`                        | PUT    | ✅   | Đổi mật khẩu                   |
-| 8    | `/Auth/forgot-password`                        | POST   | ❌   | Quên mật khẩu                  |
-| 9    | `/Auth/reset-password`                         | POST   | ❌   | Đặt lại mật khẩu               |
-| -    | **USER**                                       |        |      |                                |
-| 10   | `/User/profile`                                | GET    | ✅   | Xem hồ sơ                      |
-| 11   | `/User/profile`                                | PUT    | ✅   | Cập nhật hồ sơ                 |
-| 12   | `/User/update-interests`                       | POST   | ✅   | Cập nhật sở thích genre        |
-| -    | **ARTIST**                                     |        |      |                                |
-| 13   | `/Artist`                                      | GET    | ❌   | Tìm kiếm nghệ sĩ               |
-| 14   | `/Artist/{id}/songs`                           | GET    | ❌   | Bài hát của nghệ sĩ            |
-| 14.5 | `/Artist/analytics/dashboard`                  | GET    | ✅   | Dashboard analytics artist     |
-| 14.6 | `/Artist/analytics/top-songs`                  | GET    | ✅   | Top songs analytics artist     |
-| -    | **FILE**                                       |        |      |                                |
-| 15   | `/File/upload-image`                           | POST   | ❌   | Upload ảnh lên Cloudinary      |
-| 16   | `/File/upload-audio`                           | POST   | ❌   | Upload nhạc lên Cloudinary     |
-| 17   | `/File/signature`                              | GET    | ❌   | Lấy signature upload trực tiếp |
-| -    | **MUSIC (SONGS)**                              |        |      |                                |
-| 18   | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)        |
-| 19   | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình               |
-| 20   | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                    |
-| 21   | `/Music/song/{id}`                             | PUT    | ✅   | Cập nhật bài hát               |
-| 22   | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                    |
-| 23   | `/Music/check-hash/{hash}`                     | GET    | ❌   | Kiểm tra file trùng            |
-| -    | **MUSIC (ALBUMS)**                             |        |      |                                |
-| 24   | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)          |
-| 25   | `/Music/my-albums`                             | GET    | ✅   | Album của mình                 |
-| 26   | `/Music/album`                                 | POST   | ✅   | Tạo album                      |
-| 27   | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album                 |
-| 28   | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                      |
-| 29   | `/Music/album/{id}`                            | GET    | ❌   | Chi tiết album + bài hát       |
-| 30   | `/Music/album/{id}/add-song/{sid}`             | POST   | ✅   | Thêm bài hát vào album         |
-| 31   | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album         |
-| -    | **MUSIC (PLAYLISTS)**                          |        |      |                                |
-| 32   | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)       |
-| 33   | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình              |
-| 34   | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                   |
-| 35   | `/Interaction/playlist/{id}`                   | GET    | ✅   | Chi tiết playlist              |
-| 36   | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist              |
-| 37   | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                   |
-| 38   | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist      |
-| 39   | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist      |
-| -    | **LIKE / FOLLOW**                              |        |      |                                |
-| 40   | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát         |
-| 41   | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích    |
-| 42   | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user      |
-| 43   | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi   |
-| 44   | `/Interaction/record-play`                     | POST   | ✅   | Ghi nhận lượt nghe bài hát     |
-| -    | **GENRE**                                      |        |      |                                |
-| 45   | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại                |
-| 46   | `/Music/genre`                                 | POST   | 🔑   | Tạo thể loại                   |
-| 47   | `/Music/genre/{genreId}`                       | PUT    | 🔑   | Cập nhật thể loại              |
-| 48   | `/Music/genre/{genreId}`                       | DELETE | 🔑   | Xóa thể loại                   |
-| -    | **RECOMMENDATION**                             |        |      |                                |
-| 49   | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát                |
-| 50   | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                  |
-| -    | **PAYMENT**                                    |        |      |                                |
-| 51   | `/Payment/create`                              | POST   | ✅   | Tạo thanh toán VNPay           |
-| 52   | `/Payment/vnpay-return`                        | GET    | ❌   | VNPay redirect → cấp quyền     |
-| 53   | `/Payment/vnpay-ipn`                           | GET    | ❌   | VNPay IPN (không sử dụng)      |
-| 54   | `/Payment/history`                             | GET    | ✅   | Lịch sử thanh toán             |
-| 55   | `/Payment/{paymentId}`                         | GET    | ✅   | Chi tiết giao dịch             |
-| -    | **SUBSCRIPTION**                               |        |      |                                |
-| 56   | `/Subscription/plans`                          | GET    | ❌   | Danh sách gói subscription     |
-| 57   | `/Subscription/active`                         | GET    | ✅   | Subscription đang hoạt động    |
-| 58   | `/Subscription/history`                        | GET    | ✅   | Lịch sử subscription           |
-| 59   | `/Subscription/features`                       | GET    | ✅   | Toàn bộ quyền/feature user     |
-| 60   | `/Subscription/features/can-upload`            | GET    | ✅   | Check quyền upload             |
-| 61   | `/Subscription/features/can-schedule`          | GET    | ✅   | Check quyền lên lịch           |
-| 62   | `/Subscription/features/has-analytics`         | GET    | ✅   | Check analytics nâng cao       |
-| -    | **ADMIN**                                      |        |      |                                |
-| 63   | `/Admin/dashboard`                             | GET    | 🔑   | Thống kê dashboard             |
-| 64   | `/Admin/users`                                 | GET    | 🔑   | Danh sách users                |
-| 65   | `/Admin/users/{userId}/toggle-ban`             | POST   | 🔑   | Ban/unban user                 |
-| 66   | `/Admin/artists`                               | GET    | 🔑   | Danh sách artists              |
-| 67   | `/Admin/songs`                                 | GET    | 🔑   | Danh sách bài hát              |
-| 68   | `/Admin/songs/{songId}`                        | DELETE | 🔑   | Xóa bài hát (force)            |
-| 69   | `/Admin/subscriptions`                         | GET    | 🔑   | Danh sách subscriptions        |
-| 70   | `/Admin/payments`                              | GET    | 🔑   | Danh sách payments             |
-| 71   | `/Admin/payments/pending`                      | GET    | 🔑   | Payments chờ duyệt             |
-| 72   | `/Admin/payments/{paymentId}/approve`          | POST   | 🔑   | Duyệt payment                  |
-| 73   | `/Admin/payments/{paymentId}/reject`           | POST   | 🔑   | Từ chối payment                |
-| -    | **ADMIN (MỚI)**                                |        |      |                                |
-| 74   | `/Admin/users/{userId}/set-role`               | POST   | 🔑   | Thay đổi role user             |
-| 75   | `/Admin/payments/{paymentId}/status`           | PUT    | 🔑   | Cập nhật trạng thái payment    |
-| 76   | `/Admin/payments/cancel-expired`               | POST   | 🔑   | Hủy payment quá hạn            |
-| 77   | `/Admin/notifications/send`                    | POST   | 🔑   | Gửi thông báo cho user         |
-| -    | **NOTIFICATION**                               |        |      |                                |
-| 78   | `/Notification`                                | GET    | ✅   | Danh sách thông báo            |
-| 79   | `/Notification/unread-count`                   | GET    | ✅   | Đếm thông báo chưa đọc         |
-| 80   | `/Notification/{id}/read`                      | POST   | ✅   | Đánh dấu đã đọc                |
-| 81   | `/Notification/read-all`                       | POST   | ✅   | Đánh dấu tất cả đã đọc         |
+| #    | Endpoint                                       | Method | Auth | Desc                            |
+| ---- | ---------------------------------------------- | ------ | ---- | ------------------------------- |
+| -    | **AUTH**                                       |        |      |                                 |
+| 1    | `/Auth/login`                                  | POST   | ❌   | Đăng nhập                       |
+| 2    | `/Auth/google-login`                           | POST   | ❌   | Đăng nhập Google                |
+| 3    | `/Auth/register`                               | POST   | ❌   | Đăng ký                         |
+| 4    | `/Auth/refresh-token`                          | POST   | ❌   | Làm mới token                   |
+| 5    | `/Auth/logout`                                 | POST   | ✅   | Đăng xuất                       |
+| 6    | `/Auth/set-role`                               | POST   | ✅   | Cập nhật vai trò                |
+| 7    | `/Auth/change-password`                        | PUT    | ✅   | Đổi mật khẩu                    |
+| 8    | `/Auth/forgot-password`                        | POST   | ❌   | Quên mật khẩu                   |
+| 9    | `/Auth/reset-password`                         | POST   | ❌   | Đặt lại mật khẩu                |
+| -    | **USER**                                       |        |      |                                 |
+| 10   | `/User/profile`                                | GET    | ✅   | Xem hồ sơ                       |
+| 11   | `/User/profile`                                | PUT    | ✅   | Cập nhật hồ sơ                  |
+| 12   | `/User/update-interests`                       | POST   | ✅   | Cập nhật sở thích genre         |
+| -    | **ARTIST**                                     |        |      |                                 |
+| 13   | `/Artist`                                      | GET    | ❌   | Tìm kiếm nghệ sĩ                |
+| 14   | `/Artist/{id}/songs`                           | GET    | ❌   | Bài hát của nghệ sĩ             |
+| 14.5 | `/Artist/analytics/dashboard`                  | GET    | ✅   | Dashboard analytics artist      |
+| 14.6 | `/Artist/analytics/top-songs`                  | GET    | ✅   | Top songs analytics artist      |
+| -    | **FILE**                                       |        |      |                                 |
+| 15   | `/File/upload-image`                           | POST   | ❌   | Upload ảnh lên Cloudinary       |
+| 16   | `/File/upload-audio`                           | POST   | ❌   | Upload nhạc lên Cloudinary      |
+| 17   | `/File/signature`                              | GET    | ❌   | Lấy signature upload trực tiếp  |
+| -    | **MUSIC (SONGS)**                              |        |      |                                 |
+| 18   | `/Music/songs`                                 | GET    | ❌   | Tất cả bài hát (search)         |
+| 19   | `/Music/my-songs`                              | GET    | ✅   | Bài hát của mình                |
+| 19.5 | `/Music/my-scheduled-songs`                    | GET    | ✅   | Hàng chờ phát hành của mình     |
+| 20   | `/Music/song`                                  | POST   | ✅   | Tạo bài hát                     |
+| 21   | `/Music/song/{id}`                             | PUT    | ✅   | Cập nhật bài hát                |
+| 22   | `/Music/song/{id}`                             | DELETE | ✅   | Xóa bài hát                     |
+| 23   | `/Music/check-hash/{hash}`                     | GET    | ❌   | Kiểm tra file trùng             |
+| -    | **MUSIC (ALBUMS)**                             |        |      |                                 |
+| 24   | `/Music/albums`                                | GET    | ❌   | Tất cả album (search)           |
+| 24.5 | `/Music/albums/popular`                        | GET    | ❌   | Album phổ biến theo window      |
+| 25   | `/Music/my-albums`                             | GET    | ✅   | Album của mình                  |
+| 26   | `/Music/album`                                 | POST   | ✅   | Tạo album                       |
+| 27   | `/Music/album/{id}`                            | PUT    | ✅   | Cập nhật album                  |
+| 28   | `/Music/album/{id}`                            | DELETE | ✅   | Xóa album                       |
+| 29   | `/Music/album/{id}`                            | GET    | ❌   | Chi tiết album + bài hát        |
+| 30   | `/Music/album/{id}/add-song/{sid}`             | POST   | ✅   | Thêm bài hát vào album          |
+| 31   | `/Interaction/album/{id}/remove-song/{sid}`    | DELETE | ✅   | Xóa bài hát khỏi album          |
+| -    | **MUSIC (PLAYLISTS)**                          |        |      |                                 |
+| 32   | `/Music/playlists`                             | GET    | ❌   | Tất cả playlist (search)        |
+| 33   | `/Music/my-playlists`                          | GET    | ✅   | Playlist của mình               |
+| 34   | `/Interaction/playlist`                        | POST   | ✅   | Tạo playlist                    |
+| 35   | `/Interaction/playlist/{id}`                   | GET    | ✅   | Chi tiết playlist               |
+| 36   | `/Interaction/playlist/{id}`                   | PUT    | ✅   | Cập nhật playlist               |
+| 37   | `/Interaction/playlist/{id}`                   | DELETE | ✅   | Xóa playlist                    |
+| 38   | `/Interaction/playlist/{id}/add-song/{sid}`    | POST   | ✅   | Thêm bài hát vào playlist       |
+| 39   | `/Interaction/playlist/{id}/remove-song/{sid}` | DELETE | ✅   | Xóa bài hát khỏi playlist       |
+| -    | **LIKE / FOLLOW**                              |        |      |                                 |
+| 40   | `/Interaction/like/{songId}`                   | POST   | ✅   | Thích/bỏ thích bài hát          |
+| 41   | `/Interaction/liked-songs`                     | GET    | ✅   | Danh sách bài hát yêu thích     |
+| 42   | `/Interaction/follow/{userId}`                 | POST   | ✅   | Theo dõi/bỏ theo dõi user       |
+| 43   | `/Interaction/followings`                      | GET    | ✅   | Danh sách user đang theo dõi    |
+| 44   | `/Interaction/record-play`                     | POST   | ✅   | Ghi nhận lượt nghe bài hát      |
+| -    | **GENRE**                                      |        |      |                                 |
+| 45   | `/Music/genres`                                | GET    | ❌   | Tất cả thể loại                 |
+| 46   | `/Music/genre`                                 | POST   | 🔑   | Tạo thể loại                    |
+| 47   | `/Music/genre/{genreId}`                       | PUT    | 🔑   | Cập nhật thể loại               |
+| 48   | `/Music/genre/{genreId}`                       | DELETE | 🔑   | Xóa thể loại                    |
+| -    | **RECOMMENDATION**                             |        |      |                                 |
+| 49   | `/Recommendation/songs/{userId}`               | GET    | ✅   | Đề xuất bài hát                 |
+| 50   | `/Recommendation/albums/{userId}`              | GET    | ✅   | Đề xuất album                   |
+| 50.5 | `/Recommendation/related-songs/{songId}`       | GET    | ❌   | Bài hát liên quan theo ngữ cảnh |
+| -    | **PAYMENT**                                    |        |      |                                 |
+| 51   | `/Payment/create`                              | POST   | ✅   | Tạo thanh toán VNPay            |
+| 52   | `/Payment/vnpay-return`                        | GET    | ❌   | VNPay redirect → cấp quyền      |
+| 53   | `/Payment/vnpay-ipn`                           | GET    | ❌   | VNPay IPN (không sử dụng)       |
+| 54   | `/Payment/history`                             | GET    | ✅   | Lịch sử thanh toán              |
+| 55   | `/Payment/{paymentId}`                         | GET    | ✅   | Chi tiết giao dịch              |
+| -    | **SUBSCRIPTION**                               |        |      |                                 |
+| 56   | `/Subscription/plans`                          | GET    | ❌   | Danh sách gói subscription      |
+| 57   | `/Subscription/active`                         | GET    | ✅   | Subscription đang hoạt động     |
+| 58   | `/Subscription/history`                        | GET    | ✅   | Lịch sử subscription            |
+| 59   | `/Subscription/features`                       | GET    | ✅   | Toàn bộ quyền/feature user      |
+| 60   | `/Subscription/features/can-upload`            | GET    | ✅   | Check quyền upload              |
+| 61   | `/Subscription/features/can-schedule`          | GET    | ✅   | Check quyền lên lịch            |
+| 62   | `/Subscription/features/has-analytics`         | GET    | ✅   | Check analytics nâng cao        |
+| -    | **ADMIN**                                      |        |      |                                 |
+| 63   | `/Admin/dashboard`                             | GET    | 🔑   | Thống kê dashboard              |
+| 64   | `/Admin/users`                                 | GET    | 🔑   | Danh sách users                 |
+| 65   | `/Admin/users/{userId}/toggle-ban`             | POST   | 🔑   | Ban/unban user                  |
+| 66   | `/Admin/artists`                               | GET    | 🔑   | Danh sách artists               |
+| 67   | `/Admin/songs`                                 | GET    | 🔑   | Danh sách bài hát               |
+| 68   | `/Admin/songs/{songId}`                        | DELETE | 🔑   | Xóa bài hát (force)             |
+| 69   | `/Admin/subscriptions`                         | GET    | 🔑   | Danh sách subscriptions         |
+| 70   | `/Admin/payments`                              | GET    | 🔑   | Danh sách payments              |
+| 71   | `/Admin/payments/pending`                      | GET    | 🔑   | Payments chờ duyệt              |
+| 72   | `/Admin/payments/{paymentId}/approve`          | POST   | 🔑   | Duyệt payment                   |
+| 73   | `/Admin/payments/{paymentId}/reject`           | POST   | 🔑   | Từ chối payment                 |
+| -    | **ADMIN (MỚI)**                                |        |      |                                 |
+| 74   | `/Admin/users/{userId}/set-role`               | POST   | 🔑   | Thay đổi role user              |
+| 75   | `/Admin/payments/{paymentId}/status`           | PUT    | 🔑   | Cập nhật trạng thái payment     |
+| 76   | `/Admin/payments/cancel-expired`               | POST   | 🔑   | Hủy payment quá hạn             |
+| 77   | `/Admin/notifications/send`                    | POST   | 🔑   | Gửi thông báo cho user          |
+| -    | **NOTIFICATION**                               |        |      |                                 |
+| 78   | `/Notification`                                | GET    | ✅   | Danh sách thông báo             |
+| 79   | `/Notification/unread-count`                   | GET    | ✅   | Đếm thông báo chưa đọc          |
+| 80   | `/Notification/{id}/read`                      | POST   | ✅   | Đánh dấu đã đọc                 |
+| 81   | `/Notification/read-all`                       | POST   | ✅   | Đánh dấu tất cả đã đọc          |
 
 > 🔑 = Yêu cầu role **Admin**
 
 ---
 
-**Total: 9 Auth + 3 User + 4 Artist + 3 File + 31 Feature + 5 Payment + 7 Subscription + 2 Genre (Admin) + 15 Admin + 4 Notification = 83 Endpoints** ✅
+**Total: 9 Auth + 3 User + 4 Artist + 3 File + 34 Feature + 5 Payment + 7 Subscription + 2 Genre (Admin) + 15 Admin + 4 Notification = 86 Endpoints** ✅

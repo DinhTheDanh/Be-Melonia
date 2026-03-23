@@ -20,6 +20,7 @@ public static class ResultExtensions
             ResultType.NotFound => new NotFoundObjectResult(new { Message = result.Error }),
             ResultType.Unauthorized => new UnauthorizedObjectResult(new { Message = result.Error }),
             ResultType.Forbidden => new ObjectResult(new { Message = result.Error }) { StatusCode = 403 },
+            ResultType.Conflict => new ConflictObjectResult(new { Message = result.Error }),
             _ => new BadRequestObjectResult(new { Message = result.Error })
         };
     }
@@ -39,6 +40,7 @@ public static class ResultExtensions
             ResultType.NotFound => new NotFoundObjectResult(new { Message = result.Error }),
             ResultType.Unauthorized => new UnauthorizedObjectResult(new { Message = result.Error }),
             ResultType.Forbidden => new ObjectResult(new { Message = result.Error }) { StatusCode = 403 },
+            ResultType.Conflict => new ConflictObjectResult(new { Message = result.Error }),
             _ => new BadRequestObjectResult(new { Message = result.Error })
         };
     }
@@ -58,6 +60,7 @@ public static class ResultExtensions
             ResultType.NotFound => new NotFoundObjectResult(new { Message = result.Error }),
             ResultType.Unauthorized => new UnauthorizedObjectResult(new { Message = result.Error }),
             ResultType.Forbidden => new ObjectResult(new { Message = result.Error }) { StatusCode = 403 },
+            ResultType.Conflict => new ConflictObjectResult(new { Message = result.Error }),
             _ => new BadRequestObjectResult(new { Message = result.Error })
         };
     }

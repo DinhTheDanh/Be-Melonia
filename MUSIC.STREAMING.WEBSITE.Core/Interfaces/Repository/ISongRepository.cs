@@ -101,5 +101,25 @@ public interface ISongRepository : IBaseRepository<Song>
     /// <param name="songIds">Danh sách ID bài hát</param>
     /// <returns>Danh sách SongDto</returns>
     Task<List<SongDto>> GetSongsByIdsAsync(List<Guid> songIds);
+
+    /// <summary>
+    /// Lấy danh sách bài hát đã lên lịch của user
+    /// </summary>
+    Task<PagingResult<ScheduledSongQueueItemDto>> GetUserScheduledSongsAsync(Guid userId, string status, int pageIndex, int pageSize);
+
+    /// <summary>
+    /// Lấy các bài hát đến thời điểm publish
+    /// </summary>
+    Task<List<Song>> GetSongsReadyToPublishAsync(DateTime nowUtc, int batchSize);
+
+    /// <summary>
+    /// Publish bài hát đã lên lịch nếu còn hợp lệ trạng thái
+    /// </summary>
+    Task<bool> PublishScheduledSongAsync(Guid songId, DateTime publishedAtUtc);
+
+    /// <summary>
+    /// Lấy danh sách nghệ sĩ sở hữu bài hát
+    /// </summary>
+    Task<List<Guid>> GetSongArtistIdsAsync(Guid songId);
 }
 

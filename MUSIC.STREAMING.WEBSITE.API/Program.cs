@@ -83,6 +83,7 @@ builder.Services.AddSignalR();
 // Background services
 builder.Services.AddHostedService<SubscriptionExpiryBackgroundService>();
 builder.Services.AddHostedService<PaymentExpiryBackgroundService>();
+builder.Services.AddHostedService<ReleaseSchedulingBackgroundService>();
 
 // Cấu hình JWT 
 // Lấy Key từ appsettings.json

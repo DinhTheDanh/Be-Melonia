@@ -50,6 +50,11 @@ public class Result<T>
         return Failure(error, ResultType.Forbidden);
     }
 
+    public static Result<T> Conflict(string error = "Dữ liệu xung đột")
+    {
+        return Failure(error, ResultType.Conflict);
+    }
+
     public static Result<T> BadRequest(string error = "Yêu cầu không hợp lệ")
     {
         return Failure(error, ResultType.BadRequest);
@@ -103,6 +108,11 @@ public class Result
     {
         return Failure(error, ResultType.Forbidden);
     }
+
+    public static Result Conflict(string error = "Dữ liệu xung đột")
+    {
+        return Failure(error, ResultType.Conflict);
+    }
 }
 
 public enum ResultType
@@ -111,5 +121,6 @@ public enum ResultType
     BadRequest,
     NotFound,
     Unauthorized,
-    Forbidden
+    Forbidden,
+    Conflict
 }

@@ -25,6 +25,16 @@ public class Song
 
     public bool IsPublic { get; set; } = true;
 
+    public DateTime? ScheduledReleaseAt { get; set; }
+
+    public string ReleaseStatus { get; set; } = "published";
+
+    public DateTime? PublishedAt { get; set; }
+
+    public int PublishAttempts { get; set; }
+
+    public string? PublishError { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

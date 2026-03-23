@@ -15,10 +15,12 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
     {
 
         private readonly IMusicService _musicService;
+        private readonly IAdminService _adminService;
 
-        public MusicController(IMusicService musicService, ISongRepository songRepo)
+        public MusicController(IMusicService musicService, IAdminService adminService)
         {
             _musicService = musicService;
+            _adminService = adminService;
         }
 
         [HttpGet("songs")]
@@ -39,6 +41,17 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         public async Task<IActionResult> GetAlbums([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _musicService.GetAlbumsAsync(keyword ?? "", pageIndex, pageSize);
+            return Ok(result);
+        }
+
+        [HttpGet("albums/popular")]
+        public async Task<IActionResult> GetPopularAlbums(
+            [FromQuery] string? windowType = "7d",
+            [FromQuery] string? keyword = null,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var result = await _musicService.GetPopularAlbumsAsync(windowType ?? "7d", keyword ?? "", pageIndex, pageSize);
             return Ok(result);
         }
 
@@ -71,6 +84,10 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
                 var userId = Guid.Parse(User.FindFirst("UserId")?.Value!);
                 var result = await _musicService.CreateSongAsync(userId, dto);
                 return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { Message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -137,6 +154,25 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         }
 
         [Authorize]
+        [HttpGet("my-scheduled-songs")]
+        public async Task<IActionResult> GetMyScheduledSongs([FromQuery] string? status = "all", [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var userIdString = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+
+                var userId = Guid.Parse(userIdString);
+                var result = await _musicService.GetUserScheduledSongsAsync(userId, status ?? "all", pageIndex, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [Authorize]
         [HttpGet("my-albums")]
         public async Task<IActionResult> GetMyAlbums([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
@@ -192,6 +228,12 @@ namespace MUSIC.STREAMING.WEBSITE.API.Controllers
         [HttpDelete("song/{songId}")]
         public async Task<IActionResult> DeleteSong(Guid songId)
         {
+            if (User.IsInRole("Admin"))
+            {
+                var adminResult = await _adminService.DeleteSongAsync(songId);
+                return adminResult.ToActionResult();
+            }
+
             var userIdString = User.FindFirst("UserId")?.Value;
             if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
 
